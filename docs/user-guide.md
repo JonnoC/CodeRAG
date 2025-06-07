@@ -27,7 +27,7 @@ CodeRAG is a powerful MCP (Model Context Protocol) Server that creates a graph d
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/JonnoC/CodeRAG.git
 cd CodeRAG
 
 # Install dependencies

@@ -1,233 +1,139 @@
-# CodeRAG MCP Server
+# CodeRAG - Graph-Powered Code Analysis
 
-A Model Context Protocol (MCP) Server that interfaces with Neo4J to provide GraphRAG capabilities for code analysis. Store and retrieve rich, interconnected metadata about code projects through a graph database.
+**Transform your codebase into an intelligent knowledge graph for AI-powered insights**
 
-## Features
+CodeRAG is a revolutionary tool that builds a comprehensive graph database of your code structure using Neo4J. By mapping classes, methods, relationships, and dependencies, it enables AI assistants to understand your codebase at a deeper level and provide more accurate, context-aware assistance.
 
-- **Neo4J Backend**: Uses Neo4J as the graph database for storing code entities and relationships
-- **MCP Server**: Exposes tools for adding, updating, and querying code entities via Model Context Protocol
-- **Dual Modes**: Supports both STDIO and SSE (Server-Sent Events) communication modes
-- **Rich Code Model**: Supports classes, interfaces, enums, exceptions, methods, fields, annotations, decorators, packages, and modules
-- **Relationship Tracking**: Tracks calls, implements, extends, contains, references, throws, and belongs_to relationships
-- **Advanced Queries**: Find classes calling methods, implementing interfaces, inheritance hierarchies, and more
-- **Codebase Scanner**: Automatically scan and populate graph from existing projects (TypeScript, JavaScript, Java, Python)
-- **Code Quality Metrics**: CK metrics suite, package metrics, architectural analysis, and quality assessment
-- **Guided Prompts**: Interactive MCP prompts for effective tool usage and analysis workflows
+## What CodeRAG Does
 
-## Setup
+🔍 **Smart Code Scanning** - Automatically analyzes your codebase and builds a detailed graph of all classes, methods, interfaces, and their relationships
 
-### Prerequisites
+📊 **Quality Insights** - Calculates industry-standard metrics (CK metrics, package coupling, architectural patterns) to identify code smells and improvement opportunities  
 
-- Node.js 18+ 
-- Neo4J database (local or remote)
-- TypeScript
+🤖 **AI Integration** - Connects seamlessly with AI coding assistants through the Model Context Protocol (MCP), giving them deep understanding of your code structure
 
-### Installation
+🏗️ **Architecture Analysis** - Visualizes inheritance hierarchies, dependency chains, and architectural patterns to help you understand complex codebases
 
-1. Clone or download the project
-2. Install dependencies:
+## Perfect For
+
+- **Code Reviews** - Get AI assistance that understands your entire codebase context
+- **Onboarding** - Help new team members quickly understand large, complex projects  
+- **Refactoring** - Identify tightly coupled code, circular dependencies, and architectural issues
+- **Documentation** - Generate insights about code relationships and design patterns
+- **Legacy Analysis** - Map and understand inherited codebases with complex structures
+
+## Supported Languages
+
+- TypeScript & JavaScript 
+- Java
+- Python
+- C# *(coming soon)*
+
+## Quick Start
+
+Get up and running in 5 minutes:
+
+1. **Clone and Install**
    ```bash
+   git clone https://github.com/JonnoC/CodeRAG.git
+   cd CodeRAG
    npm install
    ```
 
-3. Create a `.env` file based on `.env.example`:
+2. **Setup Neo4J Database** (see our [detailed guide](docs/user-guide.md) for help)
+   ```bash
+   # Using Docker (easiest)
+   docker run --name neo4j-coderag -p 7474:7474 -p 7687:7687 -d \
+     --env NEO4J_AUTH=neo4j/your_password neo4j:5.12
+   ```
+
+3. **Configure Environment**
    ```bash
    cp .env.example .env
+   # Edit .env with your Neo4J credentials
    ```
 
-4. Configure your Neo4J connection in `.env`:
-   ```
-   NEO4J_URI=bolt://localhost:7687
-   NEO4J_USER=neo4j
-   NEO4J_PASSWORD=your_password
-   ```
-
-5. Build the project:
+4. **Scan Your First Project**
    ```bash
    npm run build
+   npm run scan /path/to/your/project
    ```
 
-## Usage
+5. **Connect to Your AI Assistant**
+   
+   Add to your AI tool's MCP configuration:
+   ```json
+   {
+     "mcpServers": {
+       "coderag": {
+         "command": "node",
+         "args": ["/path/to/CodeRAG/build/index.js"]
+       }
+     }
+   }
+   ```
 
-### STDIO Mode (Default)
-For direct integration with MCP clients:
-```bash
-npm start
+📖 **[Read the Complete User Guide](docs/user-guide.md)** for detailed setup instructions, AI tool integrations, and advanced usage.
+
+## Key Features
+
+- 🔧 **Automated Scanning** - Parses TypeScript, JavaScript, Java, and Python projects
+- 🎯 **Smart Analysis** - Identifies classes, methods, interfaces, inheritance, and dependencies  
+- 📈 **Quality Metrics** - CK metrics, package coupling, architectural issue detection
+- 🤖 **AI-Ready** - Integrates with Claude Code, Windsurf, Cursor, VS Code Continue, and more
+- 💡 **Guided Prompts** - Interactive workflows for code analysis and exploration
+- 🔄 **Dual Modes** - STDIO for direct AI integration, HTTP for web-based tools
+
+## Example Use Cases
+
+### 🕵️ **Code Investigation**
+*"Show me all the classes that call the `authenticate` method"*
+```
+Use find_classes_calling_method with method_name="authenticate"
 ```
 
-### SSE Mode
-For HTTP-based communication:
+### 🏗️ **Architecture Review** 
+*"What are the architectural issues in this codebase?"*
+```
+Use find_architectural_issues to detect circular dependencies, god classes, and high coupling
+```
+
+### 📊 **Quality Assessment**
+*"How complex is my UserService class?"*
+```
+Use calculate_ck_metrics for class_id="com.example.UserService"
+```
+
+### 🔍 **Dependency Analysis**
+*"What does this class depend on and what depends on it?"*
+```
+Use the find_dependencies prompt for interactive guidance
+```
+
+## Common Commands
+
 ```bash
+# Quick project scan
+npm run scan /path/to/project
+
+# Start for AI assistant integration  
+npm start
+
+# Run quality analysis
+npm run scan /path/to/project -- --analyze
+
+# Start web server for HTTP access
 npm start -- --sse --port 3000
 ```
 
-### Development Mode
-```bash
-npm run dev
-```
+## Documentation
 
-### Codebase Scanning
-```bash
-# Scan a project (supports TypeScript, JavaScript, Java, Python)
-npm run scan /path/to/your/project
+📚 **[Complete User Guide](docs/user-guide.md)** - Detailed setup, integrations, and workflows
 
-# Scan with quality analysis
-npm run scan /path/to/your/project -- --analyze
+## Contributing
 
-# Clear existing graph data before scanning
-npm run scan /path/to/your/project -- --clear-graph
-
-# Include test files in scan
-npm run scan /path/to/your/project -- --include-tests
-
-# Validate project structure only
-npm run scan validate /path/to/your/project
-
-# Get help with scanner options
-npm run scan --help
-```
-
-## Available Tools and Prompts
-
-### Guided Prompts
-- `analyze_codebase`: Get step-by-step guidance on analyzing any codebase using CodeRAG tools
-- `setup_code_graph`: Language-specific guide to set up a code graph for a new project
-- `find_dependencies`: Interactive guide to analyze class dependencies and method calls
-- `analyze_inheritance`: Guide to analyze inheritance hierarchies and interface implementations
-
-### Node Management
-- `add_node`: Add a new code entity (class, interface, method, etc.)
-- `update_node`: Update an existing node
-- `get_node`: Retrieve a node by ID
-- `delete_node`: Delete a node
-- `find_nodes_by_type`: Find nodes by type (class, interface, etc.)
-- `search_nodes`: Search nodes by name, qualified name, or description
-
-### Edge Management
-- `add_edge`: Add a relationship between two nodes
-- `get_edge`: Retrieve an edge by ID
-- `delete_edge`: Delete an edge
-- `find_edges_by_source`: Find edges originating from a node
-
-### Code Analysis
-- `find_classes_calling_method`: Find all classes that call a specific method
-- `find_classes_implementing_interface`: Find all classes implementing an interface
-- `get_inheritance_hierarchy`: Get the inheritance hierarchy for a class
-
-### Code Quality Metrics (Phase 1 - Core Metrics)
-- `calculate_ck_metrics`: Calculate Chidamber & Kemerer metrics (WMC, DIT, NOC, CBO, RFC, LCOM)
-- `calculate_package_metrics`: Calculate package metrics (Afferent/Efferent Coupling, Instability, Abstractness, Distance)
-- `find_architectural_issues`: Find architectural issues (circular dependencies, god classes, high coupling)
-- `get_project_summary`: Get overall project metrics summary and quality assessment
-
-## API Endpoints (SSE Mode)
-
-When running in SSE mode, the following HTTP endpoints are available:
-
-- `GET /health`: Health check
-- `GET /sse`: SSE endpoint for MCP communication
-- `POST /api/nodes`: Create a new node
-- `GET /api/nodes/:id`: Get node by ID
-- `GET /api/nodes?type=class`: Find nodes by type
-- `GET /api/nodes?search=term`: Search nodes
-- `POST /api/edges`: Create a new edge
-- `GET /api/analysis/classes-calling-method/:methodName`: Find classes calling method
-- `GET /api/analysis/classes-implementing-interface/:interfaceName`: Find implementing classes
-- `GET /api/analysis/inheritance-hierarchy/:className`: Get inheritance hierarchy
-- `GET /api/metrics/ck/:classId`: Calculate CK metrics for a class
-- `GET /api/metrics/package/:packageName`: Calculate package metrics
-- `GET /api/metrics/issues`: Find architectural issues
-- `GET /api/metrics/summary`: Get project quality summary
-
-## Example Usage
-
-### Using Prompts for Guidance
-```bash
-# Get guidance for analyzing a Java codebase
-mcp call get_prompt --name analyze_codebase --arguments '{"project_type": "java"}'
-
-# Get setup guide for TypeScript project
-mcp call get_prompt --name setup_code_graph --arguments '{"language": "TypeScript"}'
-
-# Get dependency analysis guidance
-mcp call get_prompt --name find_dependencies --arguments '{"target_class": "UserService"}'
-```
-
-### Code Quality Analysis
-```bash
-# Calculate CK metrics for a class
-mcp call calculate_ck_metrics --arguments '{"class_id": "com.example.UserService"}'
-
-# Get package quality metrics
-mcp call calculate_package_metrics --arguments '{"package_name": "com.example.service"}'
-
-# Find architectural issues
-mcp call find_architectural_issues
-
-# Get overall project quality summary
-mcp call get_project_summary
-```
-
-### Adding a Class Node
-```json
-{
-  "id": "com.example.MyClass",
-  "type": "class",
-  "name": "MyClass",
-  "qualified_name": "com.example.MyClass",
-  "description": "Example class for demonstration",
-  "source_file": "src/main/java/com/example/MyClass.java",
-  "start_line": 10,
-  "end_line": 50,
-  "modifiers": ["public"],
-  "attributes": {}
-}
-```
-
-### Adding a Relationship Edge
-```json
-{
-  "id": "edge_1",
-  "type": "implements",
-  "source": "com.example.MyClass",
-  "target": "com.example.MyInterface",
-  "attributes": {}
-}
-```
-
-## Development
-
-### Build
-```bash
-npm run build
-```
-
-### Type Check
-```bash
-npm run typecheck
-```
-
-### Lint
-```bash
-npm run lint
-```
-
-### Tests
-```bash
-npm test
-```
-
-## Architecture
-
-- `src/index.ts`: Main entry point
-- `src/config.ts`: Environment configuration
-- `src/types.ts`: TypeScript type definitions
-- `src/graph/`: Neo4J client and managers
-- `src/mcp/`: MCP protocol handlers
-- `src/scanner/`: Codebase scanning and parsing
-- `src/metrics/`: Code quality metrics and analysis
-- `src/prompts/`: MCP guided prompts
+Contributions welcome! Please read our contributing guidelines and submit pull requests to help improve CodeRAG.
 
 ## License
 
-MIT
+MIT - see [LICENSE](LICENSE) for details.
