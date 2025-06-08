@@ -5,12 +5,14 @@ export class NodeManager {
   constructor(private client: Neo4jClient) {}
 
   async addNode(node: CodeNode): Promise<CodeNode> {
-    // Get the proper node label based on type
+    // Get the proper node label based on type and project
     const nodeLabel = this.getNodeLabel(node.type);
+    const projectLabel = this.client.getProjectLabel(node.project_id, node.type);
     
     const query = `
-      CREATE (n:${nodeLabel}:CodeNode {
+      CREATE (n:${nodeLabel}:${projectLabel}:CodeNode {
         id: $id,
+        project_id: $project_id,
         type: $type,
         name: $name,
         qualified_name: $qualified_name,
@@ -26,6 +28,7 @@ export class NodeManager {
 
     const params = {
       id: node.id,
+      project_id: node.project_id,
       type: node.type,
       name: node.name,
       qualified_name: node.qualified_name,
@@ -46,7 +49,7 @@ export class NodeManager {
     return this.recordToNode(result.records[0].get('n'));
   }
 
-  async updateNode(nodeId: string, updates: Partial<CodeNode>): Promise<CodeNode> {
+  async updateNode(nodeId: string, projectId: string, updates: Partial<CodeNode>): Promise<CodeNode> {
     const setParts: string[] = [];
     const parameters: Record<string, any> = { id: nodeId };
 
@@ -63,10 +66,12 @@ export class NodeManager {
     }
 
     const query = `
-      MATCH (n:CodeNode {id: $id})
+      MATCH (n:CodeNode {id: $id, project_id: $project_id})
       SET ${setParts.join(', ')}
       RETURN n
     `;
+
+    parameters.project_id = projectId;
 
     const result = await this.client.runQuery(query, parameters);
 
@@ -77,9 +82,9 @@ export class NodeManager {
     return this.recordToNode(result.records[0].get('n'));
   }
 
-  async getNode(nodeId: string): Promise<CodeNode | null> {
-    const query = 'MATCH (n:CodeNode {id: $id}) RETURN n';
-    const result = await this.client.runQuery(query, { id: nodeId });
+  async getNode(nodeId: string, projectId: string): Promise<CodeNode | null> {
+    const query = 'MATCH (n:CodeNode {id: $id, project_id: $project_id}) RETURN n';
+    const result = await this.client.runQuery(query, { id: nodeId, project_id: projectId });
 
     if (result.records.length === 0) {
       return null;
@@ -88,41 +93,41 @@ export class NodeManager {
     return this.recordToNode(result.records[0].get('n'));
   }
 
-  async deleteNode(nodeId: string): Promise<boolean> {
+  async deleteNode(nodeId: string, projectId: string): Promise<boolean> {
     const query = `
-      MATCH (n:CodeNode {id: $id})
+      MATCH (n:CodeNode {id: $id, project_id: $project_id})
       DETACH DELETE n
       RETURN count(n) as deleted
     `;
 
-    const result = await this.client.runQuery(query, { id: nodeId });
+    const result = await this.client.runQuery(query, { id: nodeId, project_id: projectId });
     return result.records[0].get('deleted').toNumber() > 0;
   }
 
-  async findNodesByType(type: CodeNode['type']): Promise<CodeNode[]> {
-    const query = 'MATCH (n:CodeNode {type: $type}) RETURN n ORDER BY n.name';
-    const result = await this.client.runQuery(query, { type });
+  async findNodesByType(type: CodeNode['type'], projectId: string): Promise<CodeNode[]> {
+    const query = 'MATCH (n:CodeNode {type: $type, project_id: $project_id}) RETURN n ORDER BY n.name';
+    const result = await this.client.runQuery(query, { type, project_id: projectId });
 
     return result.records.map(record => this.recordToNode(record.get('n')));
   }
 
-  async findNodesByName(name: string): Promise<CodeNode[]> {
-    const query = 'MATCH (n:CodeNode) WHERE n.name CONTAINS $name RETURN n ORDER BY n.name';
-    const result = await this.client.runQuery(query, { name });
+  async findNodesByName(name: string, projectId: string): Promise<CodeNode[]> {
+    const query = 'MATCH (n:CodeNode {project_id: $project_id}) WHERE n.name CONTAINS $name RETURN n ORDER BY n.name';
+    const result = await this.client.runQuery(query, { name, project_id: projectId });
 
     return result.records.map(record => this.recordToNode(record.get('n')));
   }
 
-  async findNodesByQualifiedName(qualifiedName: string): Promise<CodeNode[]> {
-    const query = 'MATCH (n:CodeNode {qualified_name: $qualified_name}) RETURN n';
-    const result = await this.client.runQuery(query, { qualified_name: qualifiedName });
+  async findNodesByQualifiedName(qualifiedName: string, projectId: string): Promise<CodeNode[]> {
+    const query = 'MATCH (n:CodeNode {qualified_name: $qualified_name, project_id: $project_id}) RETURN n';
+    const result = await this.client.runQuery(query, { qualified_name: qualifiedName, project_id: projectId });
 
     return result.records.map(record => this.recordToNode(record.get('n')));
   }
 
-  async searchNodes(searchTerm: string): Promise<CodeNode[]> {
+  async searchNodes(searchTerm: string, projectId: string): Promise<CodeNode[]> {
     const query = `
-      MATCH (n:CodeNode)
+      MATCH (n:CodeNode {project_id: $project_id})
       WHERE n.name CONTAINS $searchTerm 
          OR n.qualified_name CONTAINS $searchTerm 
          OR n.description CONTAINS $searchTerm
@@ -131,14 +136,42 @@ export class NodeManager {
       LIMIT 100
     `;
 
+    const result = await this.client.runQuery(query, { searchTerm, project_id: projectId });
+    return result.records.map(record => this.recordToNode(record.get('n')));
+  }
+
+  async getAllNodes(projectId: string): Promise<CodeNode[]> {
+    const query = 'MATCH (n:CodeNode {project_id: $project_id}) RETURN n ORDER BY n.type, n.name LIMIT 1000';
+    const result = await this.client.runQuery(query, { project_id: projectId });
+
+    return result.records.map(record => this.recordToNode(record.get('n')));
+  }
+
+  // Cross-project methods (use with caution)
+  async findNodesByTypeAcrossProjects(type: CodeNode['type']): Promise<CodeNode[]> {
+    const query = 'MATCH (n:CodeNode {type: $type}) RETURN n ORDER BY n.project_id, n.name';
+    const result = await this.client.runQuery(query, { type });
+    return result.records.map(record => this.recordToNode(record.get('n')));
+  }
+
+  async searchNodesAcrossProjects(searchTerm: string): Promise<CodeNode[]> {
+    const query = `
+      MATCH (n:CodeNode)
+      WHERE n.name CONTAINS $searchTerm 
+         OR n.qualified_name CONTAINS $searchTerm 
+         OR n.description CONTAINS $searchTerm
+      RETURN n
+      ORDER BY n.project_id, n.name
+      LIMIT 100
+    `;
+
     const result = await this.client.runQuery(query, { searchTerm });
     return result.records.map(record => this.recordToNode(record.get('n')));
   }
 
-  async getAllNodes(): Promise<CodeNode[]> {
-    const query = 'MATCH (n:CodeNode) RETURN n ORDER BY n.type, n.name LIMIT 1000';
+  async getAllNodesAcrossProjects(): Promise<CodeNode[]> {
+    const query = 'MATCH (n:CodeNode) RETURN n ORDER BY n.project_id, n.type, n.name LIMIT 1000';
     const result = await this.client.runQuery(query);
-
     return result.records.map(record => this.recordToNode(record.get('n')));
   }
 
@@ -146,6 +179,7 @@ export class NodeManager {
     const properties = record.properties;
     return {
       id: properties.id,
+      project_id: properties.project_id,
       type: properties.type,
       name: properties.name,
       qualified_name: properties.qualified_name,

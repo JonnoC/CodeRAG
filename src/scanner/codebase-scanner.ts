@@ -36,7 +36,10 @@ export class CodebaseScanner {
 
   async scanProject(config: ScanConfig): Promise<ParseResult> {
     const startTime = Date.now();
-    console.log(`🔍 Starting codebase scan: ${config.projectPath}`);
+    console.log(`🔍 Starting codebase scan for project '${config.projectId}': ${config.projectPath}`);
+    
+    // Ensure project exists in database
+    await this.ensureProjectExists(config);
     
     const allEntities: ParsedEntity[] = [];
     const allRelationships: ParsedRelationship[] = [];
@@ -107,14 +110,47 @@ export class CodebaseScanner {
     }
   }
 
-  async clearGraph(): Promise<void> {
-    console.log(`🗑️  Clearing existing graph data...`);
-    const query = `
-      MATCH (n)
-      DETACH DELETE n
-    `;
-    await this.client.runQuery(query);
-    console.log(`✅ Graph cleared`);
+  async clearGraph(projectId?: string): Promise<void> {
+    if (projectId) {
+      console.log(`🗑️  Clearing graph data for project '${projectId}'...`);
+      const query = `
+        MATCH (n:CodeNode {project_id: $project_id})
+        OPTIONAL MATCH (n)-[r {project_id: $project_id}]-()
+        DELETE n, r
+      `;
+      await this.client.runQuery(query, { project_id: projectId });
+      console.log(`✅ Project '${projectId}' graph data cleared`);
+    } else {
+      console.log(`🗑️  Clearing all graph data...`);
+      const query = `
+        MATCH (n)
+        DETACH DELETE n
+      `;
+      await this.client.runQuery(query);
+      console.log(`✅ All graph data cleared`);
+    }
+  }
+
+  private async ensureProjectExists(config: ScanConfig): Promise<void> {
+    try {
+      // Check if project already exists
+      const existingProject = await this.client.getProject(config.projectId);
+      
+      if (!existingProject) {
+        // Create new project
+        console.log(`📋 Creating project '${config.projectId}'...`);
+        await this.client.createProject({
+          project_id: config.projectId,
+          name: config.projectName || config.projectId,
+          description: `Scanned from ${config.projectPath}`
+        });
+        console.log(`✅ Project '${config.projectId}' created`);
+      } else {
+        console.log(`📋 Using existing project '${config.projectId}'`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to create/verify project: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async validateProjectStructure(projectPath: string): Promise<{
@@ -256,7 +292,7 @@ export class CodebaseScanner {
       const content = await fs.promises.readFile(filePath, 'utf-8');
       
       // Parse the file
-      const result = await parser.parseFile(filePath, content);
+      const result = await parser.parseFile(filePath, content, config.projectId);
       
       return result;
 
@@ -295,6 +331,7 @@ export class CodebaseScanner {
         try {
           await this.nodeManager.addNode({
             id: entity.id,
+            project_id: entity.project_id,
             type: entity.type as any,
             name: entity.name,
             qualified_name: entity.qualified_name,
@@ -330,6 +367,7 @@ export class CodebaseScanner {
         try {
           await this.edgeManager.addEdge({
             id: relationship.id,
+            project_id: relationship.project_id,
             type: relationship.type as any,
             source: relationship.source,
             target: relationship.target,

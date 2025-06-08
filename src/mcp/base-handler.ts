@@ -21,6 +21,7 @@ import { getFrameworkUsage } from './tools/get-framework-usage.js';
 import { getAnnotationUsage } from './tools/get-annotation-usage.js';
 import { findDeprecatedCode, findUsageOfDeprecatedCode } from './tools/find-deprecated-code.js';
 import { analyzeTestingAnnotations, findUntestableCode } from './tools/analyze-testing-annotations.js';
+import { listProjects } from './tools/list-projects.js';
 
 export abstract class BaseHandler {
   protected server: Server;
@@ -120,6 +121,8 @@ export abstract class BaseHandler {
             return await this.handleAnalyzeTestingAnnotations(request.params.arguments);
           case 'find_untestable_code':
             return await this.handleFindUntestableCode(request.params.arguments);
+          case 'list_projects':
+            return await this.handleListProjects(request.params.arguments);
           default:
             throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
         }
@@ -210,6 +213,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to add the node to' },
             id: { type: 'string', description: 'Unique identifier for the node' },
             type: { 
               type: 'string', 
@@ -225,7 +229,7 @@ export abstract class BaseHandler {
             modifiers: { type: 'array', items: { type: 'string' }, description: 'Access modifiers' },
             attributes: { type: 'object', description: 'Additional attributes' }
           },
-          required: ['id', 'type', 'name', 'qualified_name']
+          required: ['project', 'id', 'type', 'name', 'qualified_name']
         }
       },
       {
@@ -234,10 +238,11 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             id: { type: 'string', description: 'Node ID to update' },
             updates: { type: 'object', description: 'Fields to update' }
           },
-          required: ['id', 'updates']
+          required: ['project', 'id', 'updates']
         }
       },
       {
@@ -246,9 +251,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             id: { type: 'string', description: 'Node ID' }
           },
-          required: ['id']
+          required: ['project', 'id']
         }
       },
       {
@@ -257,9 +263,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             id: { type: 'string', description: 'Node ID to delete' }
           },
-          required: ['id']
+          required: ['project', 'id']
         }
       },
       {
@@ -268,12 +275,13 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             type: { 
               type: 'string',
               enum: ['class', 'interface', 'enum', 'exception', 'function', 'method', 'field', 'package', 'module']
             }
           },
-          required: ['type']
+          required: ['project', 'type']
         }
       },
       {
@@ -282,9 +290,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             search_term: { type: 'string', description: 'Search term' }
           },
-          required: ['search_term']
+          required: ['project', 'search_term']
         }
       },
       {
@@ -293,6 +302,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             id: { type: 'string', description: 'Unique identifier for the edge' },
             type: {
               type: 'string',
@@ -303,7 +313,7 @@ export abstract class BaseHandler {
             target: { type: 'string', description: 'Target node ID' },
             attributes: { type: 'object', description: 'Additional edge attributes' }
           },
-          required: ['id', 'type', 'source', 'target']
+          required: ['project', 'id', 'type', 'source', 'target']
         }
       },
       {
@@ -312,9 +322,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             id: { type: 'string', description: 'Edge ID' }
           },
-          required: ['id']
+          required: ['project', 'id']
         }
       },
       {
@@ -323,9 +334,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             id: { type: 'string', description: 'Edge ID to delete' }
           },
-          required: ['id']
+          required: ['project', 'id']
         }
       },
       {
@@ -334,9 +346,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             source_id: { type: 'string', description: 'Source node ID' }
           },
-          required: ['source_id']
+          required: ['project', 'source_id']
         }
       },
       {
@@ -345,9 +358,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             method_name: { type: 'string', description: 'Method name to search for' }
           },
-          required: ['method_name']
+          required: ['project', 'method_name']
         }
       },
       {
@@ -356,9 +370,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             interface_name: { type: 'string', description: 'Interface name' }
           },
-          required: ['interface_name']
+          required: ['project', 'interface_name']
         }
       },
       {
@@ -367,9 +382,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             class_name: { type: 'string', description: 'Class name' }
           },
-          required: ['class_name']
+          required: ['project', 'class_name']
         }
       },
       {
@@ -378,9 +394,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             class_id: { type: 'string', description: 'Class ID to analyze' }
           },
-          required: ['class_id']
+          required: ['project', 'class_id']
         }
       },
       {
@@ -389,9 +406,10 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             package_name: { type: 'string', description: 'Package name to analyze' }
           },
-          required: ['package_name']
+          required: ['project', 'package_name']
         }
       },
       {
@@ -399,8 +417,10 @@ export abstract class BaseHandler {
         description: 'Find architectural issues (circular dependencies, god classes, high coupling)',
         inputSchema: {
           type: 'object',
-          properties: {},
-          additionalProperties: false
+          properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' }
+          },
+          required: ['project']
         }
       },
       {
@@ -408,8 +428,10 @@ export abstract class BaseHandler {
         description: 'Get overall project metrics summary and quality assessment',
         inputSchema: {
           type: 'object',
-          properties: {},
-          additionalProperties: false
+          properties: {
+            project: { type: 'string', description: 'Project name or identifier to analyze (optional - if not provided, analyzes all projects)', required: false }
+          },
+          required: []
         }
       },
       {
@@ -418,6 +440,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to add the file to' },
             file_path: { type: 'string', description: 'Path to the source file to parse' },
             clear_existing: { 
               type: 'boolean', 
@@ -425,7 +448,7 @@ export abstract class BaseHandler {
               default: false
             }
           },
-          required: ['file_path']
+          required: ['project', 'file_path']
         }
       },
       {
@@ -434,6 +457,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to assign to scanned content' },
             directory_path: { type: 'string', description: 'Path to the directory to scan' },
             languages: { 
               type: 'array', 
@@ -457,7 +481,7 @@ export abstract class BaseHandler {
             },
             clear_existing: {
               type: 'boolean',
-              description: 'Clear existing graph data before scanning',
+              description: 'Clear existing project data before scanning',
               default: false
             },
             max_depth: {
@@ -466,7 +490,7 @@ export abstract class BaseHandler {
               default: 10
             }
           },
-          required: ['directory_path']
+          required: ['project', 'directory_path']
         }
       },
       // Annotation analysis tools
@@ -476,6 +500,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             annotation_name: {
               type: 'string',
               description: 'The annotation/decorator name to search for (e.g., @Component, @Override, staticmethod)'
@@ -494,7 +519,7 @@ export abstract class BaseHandler {
               description: 'Optional: Filter by node type'
             }
           },
-          required: ['annotation_name']
+          required: ['project', 'annotation_name']
         }
       },
       {
@@ -503,6 +528,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             include_parameters: {
               type: 'boolean',
               description: 'Whether to include annotation parameters in the results',
@@ -515,7 +541,7 @@ export abstract class BaseHandler {
               minimum: 1
             }
           },
-          required: []
+          required: ['project']
         }
       },
       {
@@ -524,6 +550,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             category: {
               type: 'string',
               description: 'Optional: Filter by annotation category (e.g., web, testing, injection, persistence)'
@@ -544,7 +571,7 @@ export abstract class BaseHandler {
               default: 'annotation'
             }
           },
-          required: []
+          required: ['project']
         }
       },
       {
@@ -553,6 +580,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             include_dependencies: {
               type: 'boolean',
               description: 'Whether to include information about what depends on deprecated code',
@@ -564,7 +592,7 @@ export abstract class BaseHandler {
               description: 'Optional: Filter by node type'
             }
           },
-          required: []
+          required: ['project']
         }
       },
       {
@@ -573,13 +601,14 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             include_usage_details: {
               type: 'boolean',
               description: 'Whether to include detailed information about each usage',
               default: false
             }
           },
-          required: []
+          required: ['project']
         }
       },
       {
@@ -588,6 +617,7 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
             framework: {
               type: 'string',
               description: 'Optional: Filter by testing framework (e.g., JUnit, Pytest, Jest)'
@@ -598,7 +628,7 @@ export abstract class BaseHandler {
               default: false
             }
           },
-          required: []
+          required: ['project']
         }
       },
       {
@@ -606,7 +636,37 @@ export abstract class BaseHandler {
         description: 'Find code patterns that may be difficult to test (private methods, static methods, etc.)',
         inputSchema: {
           type: 'object',
-          properties: {},
+          properties: {
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' }
+          },
+          required: ['project']
+        }
+      },
+      {
+        name: 'list_projects',
+        description: 'List all projects in the CodeRAG graph database with optional statistics',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            include_stats: {
+              type: 'boolean',
+              description: 'Include detailed statistics for each project (entity counts, types, etc.)',
+              default: false
+            },
+            sort_by: {
+              type: 'string',
+              enum: ['name', 'created_at', 'updated_at', 'entity_count'],
+              description: 'Sort projects by the specified field',
+              default: 'name'
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of projects to return',
+              default: 100,
+              minimum: 1,
+              maximum: 1000
+            }
+          },
           required: []
         }
       }
@@ -690,6 +750,7 @@ export abstract class BaseHandler {
   protected async handleAddNode(args: any) {
     const node: CodeNode = {
       id: args.id,
+      project_id: args.project,
       type: args.type,
       name: args.name,
       qualified_name: args.qualified_name,
@@ -708,35 +769,35 @@ export abstract class BaseHandler {
   }
 
   protected async handleUpdateNode(args: any) {
-    const result = await this.nodeManager.updateNode(args.id, args.updates);
+    const result = await this.nodeManager.updateNode(args.id, args.project, args.updates);
     return {
       content: [{ type: 'text', text: `Node updated successfully: ${JSON.stringify(result, null, 2)}` }]
     };
   }
 
   protected async handleGetNode(args: any) {
-    const result = await this.nodeManager.getNode(args.id);
+    const result = await this.nodeManager.getNode(args.id, args.project);
     return {
       content: [{ type: 'text', text: result ? JSON.stringify(result, null, 2) : 'Node not found' }]
     };
   }
 
   protected async handleDeleteNode(args: any) {
-    const result = await this.nodeManager.deleteNode(args.id);
+    const result = await this.nodeManager.deleteNode(args.id, args.project);
     return {
       content: [{ type: 'text', text: result ? 'Node deleted successfully' : 'Node not found' }]
     };
   }
 
   protected async handleFindNodesByType(args: any) {
-    const result = await this.nodeManager.findNodesByType(args.type);
+    const result = await this.nodeManager.findNodesByType(args.type, args.project);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
   }
 
   protected async handleSearchNodes(args: any) {
-    const result = await this.nodeManager.searchNodes(args.search_term);
+    const result = await this.nodeManager.searchNodes(args.search_term, args.project);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
@@ -745,6 +806,7 @@ export abstract class BaseHandler {
   protected async handleAddEdge(args: any) {
     const edge: CodeEdge = {
       id: args.id,
+      project_id: args.project,
       type: args.type,
       source: args.source,
       target: args.target,
@@ -758,42 +820,42 @@ export abstract class BaseHandler {
   }
 
   protected async handleGetEdge(args: any) {
-    const result = await this.edgeManager.getEdge(args.id);
+    const result = await this.edgeManager.getEdge(args.id, args.project);
     return {
       content: [{ type: 'text', text: result ? JSON.stringify(result, null, 2) : 'Edge not found' }]
     };
   }
 
   protected async handleDeleteEdge(args: any) {
-    const result = await this.edgeManager.deleteEdge(args.id);
+    const result = await this.edgeManager.deleteEdge(args.id, args.project);
     return {
       content: [{ type: 'text', text: result ? 'Edge deleted successfully' : 'Edge not found' }]
     };
   }
 
   protected async handleFindEdgesBySource(args: any) {
-    const result = await this.edgeManager.findEdgesBySource(args.source_id);
+    const result = await this.edgeManager.findEdgesBySource(args.source_id, args.project);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
   }
 
   protected async handleFindClassesCallingMethod(args: any) {
-    const result = await this.edgeManager.findClassesThatCallMethod(args.method_name);
+    const result = await this.edgeManager.findClassesThatCallMethod(args.method_name, args.project);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
   }
 
   protected async handleFindClassesImplementingInterface(args: any) {
-    const result = await this.edgeManager.findClassesThatImplementInterface(args.interface_name);
+    const result = await this.edgeManager.findClassesThatImplementInterface(args.interface_name, args.project);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
   }
 
   protected async handleGetInheritanceHierarchy(args: any) {
-    const result = await this.edgeManager.findInheritanceHierarchy(args.class_name);
+    const result = await this.edgeManager.findInheritanceHierarchy(args.class_name, args.project);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
@@ -941,10 +1003,10 @@ ${JSON.stringify(result, null, 2)}`
       // Clear existing entities from this file if requested
       if (clearExisting) {
         const query = `
-          MATCH (n {source_file: $filePath})
+          MATCH (n {source_file: $filePath, project: $project})
           DETACH DELETE n
         `;
-        await this.client.runQuery(query, { filePath });
+        await this.client.runQuery(query, { filePath, project: args.project });
       }
 
       // Read file content
@@ -963,10 +1025,10 @@ ${JSON.stringify(result, null, 2)}`
       }
 
       // Parse the file
-      const parseResult = await parser.parseFile(filePath, content);
+      const parseResult = await parser.parseFile(filePath, content, args.project);
 
       // Store entities and relationships
-      await this.storeParseResult(parseResult);
+      await this.storeParseResult(parseResult, args.project);
 
       const summary = `✅ File parsed successfully: ${filePath}
 
@@ -1030,6 +1092,8 @@ ${parseResult.errors.length > 5 ? `  ... and ${parseResult.errors.length - 5} mo
       // Prepare scan configuration
       const scanConfig: ScanConfig = {
         projectPath: directoryPath,
+        projectId: args.project,
+        projectName: args.project,
         languages: languages || validation.detectedLanguages,
         excludePaths,
         includeTests,
@@ -1037,9 +1101,9 @@ ${parseResult.errors.length > 5 ? `  ... and ${parseResult.errors.length - 5} mo
         outputProgress: false // We'll handle our own progress reporting
       };
 
-      // Clear existing graph data if requested
+      // Clear existing project data if requested
       if (clearExisting) {
-        await this.codebaseScanner.clearGraph();
+        await this.codebaseScanner.clearGraph(args.project);
       }
 
       // Perform the scan
@@ -1079,22 +1143,11 @@ ${parseResult.errors.length > 5 ? `  ... and ${parseResult.errors.length - 5} mo
     return null;
   }
 
-  protected async storeParseResult(parseResult: any): Promise<void> {
-    // Store entities
+  protected async storeParseResult(parseResult: any, project: string): Promise<void> {
+    // Store entities - they already have project_id from the parsers
     for (const entity of parseResult.entities) {
       try {
-        await this.nodeManager.addNode({
-          id: entity.id,
-          type: entity.type as any,
-          name: entity.name,
-          qualified_name: entity.qualified_name,
-          description: entity.description,
-          source_file: entity.source_file,
-          start_line: entity.start_line,
-          end_line: entity.end_line,
-          modifiers: entity.modifiers,
-          attributes: entity.attributes
-        });
+        await this.nodeManager.addNode(entity);
       } catch (error) {
         // Skip duplicates
         if (!(error instanceof Error) || !error.message.includes('already exists')) {
@@ -1103,16 +1156,10 @@ ${parseResult.errors.length > 5 ? `  ... and ${parseResult.errors.length - 5} mo
       }
     }
 
-    // Store relationships
+    // Store relationships - they already have project_id from the parsers
     for (const relationship of parseResult.relationships) {
       try {
-        await this.edgeManager.addEdge({
-          id: relationship.id,
-          type: relationship.type as any,
-          source: relationship.source,
-          target: relationship.target,
-          attributes: relationship.attributes
-        });
+        await this.edgeManager.addEdge(relationship);
       } catch (error) {
         // Skip duplicates
         if (!(error instanceof Error) || !error.message.includes('already exists')) {
@@ -1396,7 +1443,14 @@ What aspect of inheritance would you like to explore first?`;
   }
 
   protected async handleFindUntestableCode(args: any) {
-    const result = await findUntestableCode(this.client);
+    const result = await findUntestableCode(this.client, args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  protected async handleListProjects(args: any) {
+    const result = await listProjects(this.client, args);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };

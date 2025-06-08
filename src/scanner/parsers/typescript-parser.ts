@@ -6,16 +6,33 @@ import { LanguageParser, ParsedEntity, ParsedRelationship, ParseError } from '..
 import { AnnotationInfo } from '../../types.js';
 
 export class TypeScriptParser implements LanguageParser {
+  private currentProjectId: string = '';
+
   canParse(filePath: string): boolean {
     const ext = path.extname(filePath).toLowerCase();
     return ext === '.ts' || ext === '.tsx' || ext === '.js' || ext === '.jsx';
   }
 
-  async parseFile(filePath: string, content: string): Promise<{
+  private addEntity(entities: ParsedEntity[], entity: Omit<ParsedEntity, 'project_id'>): void {
+    entities.push({
+      ...entity,
+      project_id: this.currentProjectId
+    });
+  }
+
+  private addRelationship(relationships: ParsedRelationship[], relationship: Omit<ParsedRelationship, 'project_id'>): void {
+    relationships.push({
+      ...relationship,
+      project_id: this.currentProjectId
+    });
+  }
+
+  async parseFile(filePath: string, content: string, projectId: string): Promise<{
     entities: ParsedEntity[];
     relationships: ParsedRelationship[];
     errors: ParseError[];
   }> {
+    this.currentProjectId = projectId;
     const entities: ParsedEntity[] = [];
     const relationships: ParsedRelationship[] = [];
     const errors: ParseError[] = [];
@@ -39,7 +56,7 @@ export class TypeScriptParser implements LanguageParser {
 
       // Add package/module entity if not root
       if (packageName !== 'root') {
-        entities.push({
+        this.addEntity(entities, {
           id: packageId,
           type: 'module',
           name: packageName,
@@ -125,6 +142,7 @@ export class TypeScriptParser implements LanguageParser {
     // Create class entity
     const classEntity: ParsedEntity = {
       id: classId,
+      project_id: this.currentProjectId,
       type: 'class',
       name: className,
       qualified_name: qualifiedName,
@@ -147,7 +165,7 @@ export class TypeScriptParser implements LanguageParser {
       classEntity.attributes!.extends = parentId;
 
       // Create extends relationship
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${classId}_extends_${parentId}`,
         type: 'extends',
         source: classId,
@@ -164,7 +182,7 @@ export class TypeScriptParser implements LanguageParser {
           classEntity.attributes!.implements!.push(interfaceId);
 
           // Create implements relationship
-          relationships.push({
+          this.addRelationship(relationships, {
             id: `${classId}_implements_${interfaceId}`,
             type: 'implements',
             source: classId,
@@ -174,11 +192,11 @@ export class TypeScriptParser implements LanguageParser {
       }
     }
 
-    entities.push(classEntity);
+    this.addEntity(entities, classEntity);
 
     // Create belongs_to relationship with package
     if (packageId !== 'root') {
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${classId}_belongs_to_${packageId}`,
         type: 'belongs_to',
         source: classId,
@@ -208,6 +226,7 @@ export class TypeScriptParser implements LanguageParser {
 
     const interfaceEntity: ParsedEntity = {
       id: interfaceId,
+      project_id: this.currentProjectId,
       type: 'interface',
       name: interfaceName,
       qualified_name: qualifiedName,
@@ -228,7 +247,7 @@ export class TypeScriptParser implements LanguageParser {
           const parentName = ext.expression.name;
           const parentId = `${this.getPackageFromPath(filePath)}.${parentName}`;
           
-          relationships.push({
+          this.addRelationship(relationships, {
             id: `${interfaceId}_extends_${parentId}`,
             type: 'extends',
             source: interfaceId,
@@ -238,11 +257,11 @@ export class TypeScriptParser implements LanguageParser {
       }
     }
 
-    entities.push(interfaceEntity);
+    this.addEntity(entities, interfaceEntity);
 
     // Create belongs_to relationship
     if (packageId !== 'root') {
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${interfaceId}_belongs_to_${packageId}`,
         type: 'belongs_to',
         source: interfaceId,
@@ -273,7 +292,7 @@ export class TypeScriptParser implements LanguageParser {
     const description = this.extractJSDoc(node);
     const annotations = this.extractDecorators(node);
 
-    entities.push({
+    this.addEntity(entities, {
       id: enumId,
       type: 'enum',
       name: enumName,
@@ -289,7 +308,7 @@ export class TypeScriptParser implements LanguageParser {
 
     // Create belongs_to relationship
     if (packageId !== 'root') {
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${enumId}_belongs_to_${packageId}`,
         type: 'belongs_to',
         source: enumId,
@@ -316,7 +335,7 @@ export class TypeScriptParser implements LanguageParser {
     const returnType = this.extractReturnType(node);
     const annotations = this.extractDecorators(node);
 
-    entities.push({
+    this.addEntity(entities, {
       id: functionId,
       type: 'function',
       name: functionName,
@@ -334,7 +353,7 @@ export class TypeScriptParser implements LanguageParser {
 
     // Create belongs_to relationship
     if (packageId !== 'root') {
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${functionId}_belongs_to_${packageId}`,
         type: 'belongs_to',
         source: functionId,
@@ -355,7 +374,7 @@ export class TypeScriptParser implements LanguageParser {
       const qualifiedName = `${this.getPackageFromPath(filePath)}.${moduleName}`;
       const moduleId = qualifiedName;
 
-      entities.push({
+      this.addEntity(entities, {
         id: moduleId,
         type: 'module',
         name: moduleName,
@@ -367,7 +386,7 @@ export class TypeScriptParser implements LanguageParser {
 
       // Create belongs_to relationship
       if (packageId !== 'root') {
-        relationships.push({
+        this.addRelationship(relationships, {
           id: `${moduleId}_belongs_to_${packageId}`,
           type: 'belongs_to',
           source: moduleId,
@@ -416,7 +435,7 @@ export class TypeScriptParser implements LanguageParser {
     const returnType = 'any'; // Would need more complex type analysis for proper return types
     const annotations = this.extractDecorators(method);
 
-    entities.push({
+    this.addEntity(entities, {
       id: methodId,
       type: 'method',
       name: methodName,
@@ -434,7 +453,7 @@ export class TypeScriptParser implements LanguageParser {
     });
 
     // Create contains relationship
-    relationships.push({
+    this.addRelationship(relationships, {
       id: `${classId}_contains_${methodId}`,
       type: 'contains',
       source: classId,
@@ -460,7 +479,7 @@ export class TypeScriptParser implements LanguageParser {
     
     const annotations = this.extractDecorators(property);
 
-    entities.push({
+    this.addEntity(entities, {
       id: propertyId,
       type: 'field',
       name: propertyName,
@@ -475,7 +494,7 @@ export class TypeScriptParser implements LanguageParser {
     });
 
     // Create contains relationship
-    relationships.push({
+    this.addRelationship(relationships, {
       id: `${classId}_contains_${propertyId}`,
       type: 'contains',
       source: classId,
@@ -503,7 +522,7 @@ export class TypeScriptParser implements LanguageParser {
       parameters = this.extractParameters(member.params);
     }
 
-    entities.push({
+    this.addEntity(entities, {
       id: memberId,
       type: memberType,
       name: memberName,
@@ -518,7 +537,7 @@ export class TypeScriptParser implements LanguageParser {
     });
 
     // Create contains relationship
-    relationships.push({
+    this.addRelationship(relationships, {
       id: `${interfaceId}_contains_${memberId}`,
       type: 'contains',
       source: interfaceId,

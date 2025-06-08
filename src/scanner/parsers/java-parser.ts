@@ -4,16 +4,33 @@ import { LanguageParser, ParsedEntity, ParsedRelationship, ParseError } from '..
 import { AnnotationInfo } from '../../types.js';
 
 export class JavaParser implements LanguageParser {
+  private currentProjectId: string = '';
+
   canParse(filePath: string): boolean {
     const ext = path.extname(filePath).toLowerCase();
     return ext === '.java';
   }
 
-  async parseFile(filePath: string, content: string): Promise<{
+  private addEntity(entities: ParsedEntity[], entity: Omit<ParsedEntity, 'project_id'>): void {
+    entities.push({
+      ...entity,
+      project_id: this.currentProjectId
+    });
+  }
+
+  private addRelationship(relationships: ParsedRelationship[], relationship: Omit<ParsedRelationship, 'project_id'>): void {
+    relationships.push({
+      ...relationship,
+      project_id: this.currentProjectId
+    });
+  }
+
+  async parseFile(filePath: string, content: string, projectId: string): Promise<{
     entities: ParsedEntity[];
     relationships: ParsedRelationship[];
     errors: ParseError[];
   }> {
+    this.currentProjectId = projectId;
     const entities: ParsedEntity[] = [];
     const relationships: ParsedRelationship[] = [];
     const errors: ParseError[] = [];
@@ -28,7 +45,7 @@ export class JavaParser implements LanguageParser {
 
       // Add package entity if not default
       if (packageName && packageName !== 'default') {
-        entities.push({
+        this.addEntity(entities, {
           id: packageId,
           type: 'package',
           name: packageName,
@@ -125,6 +142,7 @@ export class JavaParser implements LanguageParser {
 
       const classEntity: ParsedEntity = {
         id: classId,
+        project_id: this.currentProjectId,
         type: this.isExceptionClass(className) ? 'exception' : 'class',
         name: className,
         qualified_name: qualifiedName,
@@ -144,7 +162,7 @@ export class JavaParser implements LanguageParser {
         const parentId = this.resolveTypeReference(extendsClass, packageName, imports);
         classEntity.attributes!.extends = parentId;
 
-        relationships.push({
+        this.addRelationship(relationships, {
           id: `${classId}_extends_${parentId}`,
           type: 'extends',
           source: classId,
@@ -159,7 +177,7 @@ export class JavaParser implements LanguageParser {
           const interfaceId = this.resolveTypeReference(interfaceName, packageName, imports);
           classEntity.attributes!.implements!.push(interfaceId);
 
-          relationships.push({
+          this.addRelationship(relationships, {
             id: `${classId}_implements_${interfaceId}`,
             type: 'implements',
             source: classId,
@@ -172,7 +190,7 @@ export class JavaParser implements LanguageParser {
 
       // Create belongs_to relationship with package
       if (packageName && packageName !== classId) {
-        relationships.push({
+        this.addRelationship(relationships, {
           id: `${classId}_belongs_to_${packageName}`,
           type: 'belongs_to',
           source: classId,
@@ -213,6 +231,7 @@ export class JavaParser implements LanguageParser {
 
       const interfaceEntity: ParsedEntity = {
         id: interfaceId,
+        project_id: this.currentProjectId,
         type: 'interface',
         name: interfaceName,
         qualified_name: qualifiedName,
@@ -231,7 +250,7 @@ export class JavaParser implements LanguageParser {
         for (const parentInterface of interfaces) {
           const parentId = this.resolveTypeReference(parentInterface, packageName, imports);
           
-          relationships.push({
+          this.addRelationship(relationships, {
             id: `${interfaceId}_extends_${parentId}`,
             type: 'extends',
             source: interfaceId,
@@ -244,7 +263,7 @@ export class JavaParser implements LanguageParser {
 
       // Create belongs_to relationship
       if (packageName && packageName !== interfaceId) {
-        relationships.push({
+        this.addRelationship(relationships, {
           id: `${interfaceId}_belongs_to_${packageName}`,
           type: 'belongs_to',
           source: interfaceId,
@@ -283,7 +302,7 @@ export class JavaParser implements LanguageParser {
       const description = this.extractJavaDoc(content, match.index);
       const annotations = this.extractAnnotations(content, match.index);
 
-      entities.push({
+      this.addEntity(entities, {
         id: enumId,
         type: 'enum',
         name: enumName,
@@ -303,7 +322,7 @@ export class JavaParser implements LanguageParser {
         for (const interfaceName of interfaces) {
           const interfaceId = this.resolveTypeReference(interfaceName, packageName, imports);
 
-          relationships.push({
+          this.addRelationship(relationships, {
             id: `${enumId}_implements_${interfaceId}`,
             type: 'implements',
             source: enumId,
@@ -314,7 +333,7 @@ export class JavaParser implements LanguageParser {
 
       // Create belongs_to relationship
       if (packageName && packageName !== enumId) {
-        relationships.push({
+        this.addRelationship(relationships, {
           id: `${enumId}_belongs_to_${packageName}`,
           type: 'belongs_to',
           source: enumId,
@@ -351,7 +370,7 @@ export class JavaParser implements LanguageParser {
       const description = this.extractJavaDoc(content, match.index);
       const annotations = this.extractAnnotations(content, match.index);
 
-      entities.push({
+      this.addEntity(entities, {
         id: exceptionId,
         type: 'exception',
         name: exceptionName,
@@ -368,7 +387,7 @@ export class JavaParser implements LanguageParser {
 
       // Create extends relationship
       const parentId = this.resolveTypeReference(parentException, packageName, imports);
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${exceptionId}_extends_${parentId}`,
         type: 'extends',
         source: exceptionId,
@@ -377,7 +396,7 @@ export class JavaParser implements LanguageParser {
 
       // Create belongs_to relationship
       if (packageName && packageName !== exceptionId) {
-        relationships.push({
+        this.addRelationship(relationships, {
           id: `${exceptionId}_belongs_to_${packageName}`,
           type: 'belongs_to',
           source: exceptionId,
@@ -454,7 +473,7 @@ export class JavaParser implements LanguageParser {
       const description = this.extractJavaDoc(classContent, match.index);
       const annotations = this.extractAnnotations(classContent, match.index);
 
-      entities.push({
+      this.addEntity(entities, {
         id: methodId,
         type: 'method',
         name: methodName,
@@ -471,7 +490,7 @@ export class JavaParser implements LanguageParser {
       });
 
       // Create contains relationship
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${parentId}_contains_${methodId}`,
         type: 'contains',
         source: parentId,
@@ -503,7 +522,7 @@ export class JavaParser implements LanguageParser {
       const modifiers = this.extractModifiers(match[0]);
       const annotations = this.extractAnnotations(classContent, match.index);
 
-      entities.push({
+      this.addEntity(entities, {
         id: fieldId,
         type: 'field',
         name: fieldName,
@@ -518,7 +537,7 @@ export class JavaParser implements LanguageParser {
       });
 
       // Create contains relationship
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${parentId}_contains_${fieldId}`,
         type: 'contains',
         source: parentId,
@@ -743,7 +762,7 @@ export class JavaParser implements LanguageParser {
         const typeName = this.getSimpleNameFromId(typeId);
         const entityType = this.determineExternalEntityType(typeId);
         
-        entities.push({
+        this.addEntity(entities, {
           id: typeId,
           type: entityType,
           name: typeName,

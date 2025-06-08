@@ -4,16 +4,33 @@ import { LanguageParser, ParsedEntity, ParsedRelationship, ParseError } from '..
 import { AnnotationInfo } from '../../types.js';
 
 export class PythonParser implements LanguageParser {
+  private currentProjectId: string = '';
+
   canParse(filePath: string): boolean {
     const ext = path.extname(filePath).toLowerCase();
     return ext === '.py';
   }
 
-  async parseFile(filePath: string, content: string): Promise<{
+  private addEntity(entities: ParsedEntity[], entity: Omit<ParsedEntity, 'project_id'>): void {
+    entities.push({
+      ...entity,
+      project_id: this.currentProjectId
+    });
+  }
+
+  private addRelationship(relationships: ParsedRelationship[], relationship: Omit<ParsedRelationship, 'project_id'>): void {
+    relationships.push({
+      ...relationship,
+      project_id: this.currentProjectId
+    });
+  }
+
+  async parseFile(filePath: string, content: string, projectId: string): Promise<{
     entities: ParsedEntity[];
     relationships: ParsedRelationship[];
     errors: ParseError[];
   }> {
+    this.currentProjectId = projectId;
     const entities: ParsedEntity[] = [];
     const relationships: ParsedRelationship[] = [];
     const errors: ParseError[] = [];
@@ -25,7 +42,7 @@ export class PythonParser implements LanguageParser {
 
       // Add module entity
       if (moduleName !== '__main__') {
-        entities.push({
+        this.addEntity(entities, {
           id: moduleId,
           type: 'module',
           name: moduleName,
@@ -90,6 +107,7 @@ export class PythonParser implements LanguageParser {
       
       const classEntity: ParsedEntity = {
         id: classId,
+        project_id: this.currentProjectId,
         type: isException ? 'exception' : 'class',
         name: className,
         qualified_name: qualifiedName,
@@ -114,7 +132,7 @@ export class PythonParser implements LanguageParser {
           if (!classEntity.attributes!.extends) {
             classEntity.attributes!.extends = parentId;
             
-            relationships.push({
+            this.addRelationship(relationships, {
               id: `${classId}_extends_${parentId}`,
               type: 'extends',
               source: classId,
@@ -124,7 +142,7 @@ export class PythonParser implements LanguageParser {
             // Additional parents (multiple inheritance or mixins)
             classEntity.attributes!.implements!.push(parentId);
             
-            relationships.push({
+            this.addRelationship(relationships, {
               id: `${classId}_implements_${parentId}`,
               type: 'implements',
               source: classId,
@@ -138,7 +156,7 @@ export class PythonParser implements LanguageParser {
 
       // Create belongs_to relationship with module
       if (moduleName !== '__main__' && moduleName !== classId) {
-        relationships.push({
+        this.addRelationship(relationships, {
           id: `${classId}_belongs_to_${moduleName}`,
           type: 'belongs_to',
           source: classId,
@@ -183,7 +201,7 @@ export class PythonParser implements LanguageParser {
         const paramList = this.parseParameters(parameters);
         const annotations = this.extractDecorators(content, match.index);
 
-        entities.push({
+        this.addEntity(entities, {
           id: functionId,
           type: 'function',
           name: functionName,
@@ -200,7 +218,7 @@ export class PythonParser implements LanguageParser {
 
         // Create belongs_to relationship with module
         if (moduleName !== '__main__' && moduleName !== functionId) {
-          relationships.push({
+          this.addRelationship(relationships, {
             id: `${functionId}_belongs_to_${moduleName}`,
             type: 'belongs_to',
             source: functionId,
@@ -237,7 +255,7 @@ export class PythonParser implements LanguageParser {
       const description = this.extractDocstring(content, match.index + match[0].length);
       const annotations = this.extractDecorators(content, match.index);
       
-      entities.push({
+      this.addEntity(entities, {
         id: exceptionId,
         type: 'exception',
         name: exceptionName,
@@ -253,7 +271,7 @@ export class PythonParser implements LanguageParser {
 
       // Create extends relationship with parent exception
       const parentId = this.resolveTypeReference(inheritance.split(',')[0].trim(), moduleName);
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${exceptionId}_extends_${parentId}`,
         type: 'extends',
         source: exceptionId,
@@ -262,7 +280,7 @@ export class PythonParser implements LanguageParser {
 
       // Create belongs_to relationship
       if (moduleName !== '__main__' && moduleName !== exceptionId) {
-        relationships.push({
+        this.addRelationship(relationships, {
           id: `${exceptionId}_belongs_to_${moduleName}`,
           type: 'belongs_to',
           source: exceptionId,
@@ -340,7 +358,7 @@ export class PythonParser implements LanguageParser {
         }
       }
 
-      entities.push({
+      this.addEntity(entities, {
         id: methodId,
         type: 'method',
         name: methodName,
@@ -357,7 +375,7 @@ export class PythonParser implements LanguageParser {
       });
 
       // Create contains relationship
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${classId}_contains_${methodId}`,
         type: 'contains',
         source: classId,
@@ -405,7 +423,7 @@ export class PythonParser implements LanguageParser {
         modifiers.push('public');
       }
 
-      entities.push({
+      this.addEntity(entities, {
         id: attributeId,
         type: 'field',
         name: attributeName,
@@ -420,7 +438,7 @@ export class PythonParser implements LanguageParser {
       });
 
       // Create contains relationship
-      relationships.push({
+      this.addRelationship(relationships, {
         id: `${classId}_contains_${attributeId}`,
         type: 'contains',
         source: classId,

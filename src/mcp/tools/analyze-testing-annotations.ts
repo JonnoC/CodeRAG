@@ -1,25 +1,27 @@
 import { Neo4jClient } from '../../graph/neo4j-client.js';
 
 export interface AnalyzeTestingAnnotationsParams {
+  project: string;
   framework?: string;
   include_coverage_analysis?: boolean;
 }
 
 export async function analyzeTestingAnnotations(
   neo4jClient: Neo4jClient,
-  params: AnalyzeTestingAnnotationsParams = {}
+  params: AnalyzeTestingAnnotationsParams
 ) {
-  const { framework, include_coverage_analysis = false } = params;
+  const { project, framework, include_coverage_analysis = false } = params;
   
   let query = `
     MATCH (n)
-    WHERE n.attributes IS NOT NULL 
+    WHERE n.project_id = $project
+    AND n.attributes IS NOT NULL 
     AND n.attributes.annotations IS NOT NULL
     AND any(annotation IN n.attributes.annotations 
          WHERE annotation.category = 'testing'
   `;
   
-  const queryParams: any = {};
+  const queryParams: any = { project };
   
   if (framework) {
     query += ` AND annotation.framework = $framework`;
@@ -83,14 +85,16 @@ export async function analyzeTestingAnnotations(
     // Analyze test coverage by looking for non-test methods without corresponding test methods
     const coverageQuery = `
       MATCH (method)
-      WHERE method.type = 'method'
+      WHERE method.project_id = $project
+      AND method.type = 'method'
       AND NOT any(annotation IN coalesce(method.attributes.annotations, []) 
                   WHERE annotation.category = 'testing')
       AND NOT method.qualified_name CONTAINS 'test'
       AND NOT method.qualified_name CONTAINS 'Test'
       
       OPTIONAL MATCH (testMethod)
-      WHERE testMethod.type = 'method'
+      WHERE testMethod.project_id = $project
+      AND testMethod.type = 'method'
       AND any(annotation IN coalesce(testMethod.attributes.annotations, []) 
               WHERE annotation.category = 'testing')
       AND (testMethod.qualified_name CONTAINS method.name 
@@ -105,7 +109,7 @@ export async function analyzeTestingAnnotations(
         round(100.0 * sum(CASE WHEN test_count > 0 THEN 1 ELSE 0 END) / count(method)) as coverage_percentage
     `;
     
-    const coverageResult = await neo4jClient.runQuery(coverageQuery);
+    const coverageResult = await neo4jClient.runQuery(coverageQuery, queryParams);
     const coverageRecord = coverageResult.records?.[0];
     
     if (coverageRecord) {
@@ -130,10 +134,13 @@ export async function analyzeTestingAnnotations(
   };
 }
 
-export async function findUntestableCode(neo4jClient: Neo4jClient) {
+export async function findUntestableCode(neo4jClient: Neo4jClient, params: { project: string }) {
+  const { project } = params;
+  
   const query = `
     MATCH (n)
-    WHERE n.type IN ['method', 'function']
+    WHERE n.project_id = $project
+    AND n.type IN ['method', 'function']
     AND NOT any(annotation IN coalesce(n.attributes.annotations, []) 
                 WHERE annotation.category = 'testing')
     
@@ -160,7 +167,7 @@ export async function findUntestableCode(neo4jClient: Neo4jClient) {
     ORDER BY count DESC
   `;
   
-  const result = await neo4jClient.runQuery(query);
+  const result = await neo4jClient.runQuery(query, { project });
   
   return {
     testability_issues: result.records?.map(record => ({

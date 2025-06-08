@@ -13,6 +13,7 @@ export interface AnnotationInfo {
 
 export interface CodeNode {
   id: string;
+  project_id: string;
   type: 'class' | 'interface' | 'enum' | 'exception' | 'function' | 'method' | 'field' | 'package' | 'module';
   name: string;
   qualified_name: string;
@@ -35,6 +36,7 @@ export interface CodeNode {
 
 export interface CodeEdge {
   id: string;
+  project_id: string;
   type: 'calls' | 'implements' | 'extends' | 'contains' | 'references' | 'throws' | 'belongs_to';
   source: string;
   target: string;
@@ -47,6 +49,21 @@ export interface Neo4jConfig {
   uri: string;
   user: string;
   password: string;
+}
+
+export interface ProjectConfig {
+  isolation_strategy: 'shared_db' | 'separate_db';
+  default_project?: string;
+  cross_project_analysis: boolean;
+  max_projects_shared_db: number;
+}
+
+export interface ProjectContext {
+  project_id: string;
+  name?: string;
+  description?: string;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 export interface QueryResult {

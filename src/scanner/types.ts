@@ -1,5 +1,7 @@
 export interface ScanConfig {
   projectPath: string;
+  projectId: string;
+  projectName?: string;
   languages: Language[];
   excludePaths?: string[];
   includeTests?: boolean;
@@ -11,6 +13,7 @@ export type Language = 'typescript' | 'javascript' | 'java' | 'python' | 'csharp
 
 export interface ParsedEntity {
   id: string;
+  project_id: string;
   type: 'class' | 'interface' | 'enum' | 'exception' | 'function' | 'method' | 'field' | 'package' | 'module';
   name: string;
   qualified_name: string;
@@ -34,6 +37,7 @@ export interface ParsedEntity {
 
 export interface ParsedRelationship {
   id: string;
+  project_id: string;
   type: 'calls' | 'implements' | 'extends' | 'contains' | 'references' | 'throws' | 'belongs_to';
   source: string;
   target: string;
@@ -63,7 +67,7 @@ export interface ParseError {
 
 export interface LanguageParser {
   canParse(filePath: string): boolean;
-  parseFile(filePath: string, content: string): Promise<{
+  parseFile(filePath: string, content: string, projectId: string): Promise<{
     entities: ParsedEntity[];
     relationships: ParsedRelationship[];
     errors: ParseError[];

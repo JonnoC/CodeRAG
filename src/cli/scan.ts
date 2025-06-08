@@ -18,6 +18,8 @@ program
 
 program
   .argument('<project-path>', 'Path to the project directory to scan')
+  .option('-p, --project-id <id>', 'Project ID for multi-project separation')
+  .option('-n, --project-name <name>', 'Project name (defaults to project ID or directory name)')
   .option('-l, --languages <languages>', 'Comma-separated list of languages to scan (typescript,javascript,java,python,csharp)', 'typescript,javascript')
   .option('-e, --exclude <paths>', 'Comma-separated list of paths to exclude', 'node_modules,dist,build')
   .option('--include-tests', 'Include test files in the scan', false)
@@ -67,6 +69,13 @@ program
         return;
       }
 
+      // Determine project ID
+      const projectId = options.projectId || path.basename(resolvedPath);
+      const projectName = options.projectName || projectId;
+      
+      console.log(`📋 Project ID: ${projectId}`);
+      console.log(`📋 Project Name: ${projectName}`);
+
       // Parse languages
       const languages = options.languages.split(',').map((l: string) => l.trim()) as Language[];
       const excludePaths = options.exclude.split(',').map((p: string) => p.trim());
@@ -74,6 +83,8 @@ program
       // Prepare scan configuration
       const scanConfig: ScanConfig = {
         projectPath: resolvedPath,
+        projectId,
+        projectName,
         languages,
         excludePaths,
         includeTests: options.includeTests,
@@ -87,7 +98,7 @@ program
 
       // Clear graph if requested
       if (options.clearGraph) {
-        await scanner.clearGraph();
+        await scanner.clearGraph(projectId);
       }
 
       // Initialize database schema

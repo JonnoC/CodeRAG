@@ -54,17 +54,22 @@ export class SSEHandler extends BaseHandler {
     // REST API endpoints for direct access to graph data
     this.app.get('/api/nodes', async (req, res) => {
       try {
-        const { type, search } = req.query;
+        const { type, search, project } = req.query;
+        
+        if (!project) {
+          return res.status(400).json({ error: 'Project parameter is required' });
+        }
+        
         let result;
         
         if (type) {
-          result = await this.nodeManager.findNodesByType(type as any);
+          result = await this.nodeManager.findNodesByType(type as any, project as string);
         } else if (search) {
-          result = await this.nodeManager.searchNodes(search as string);
+          result = await this.nodeManager.searchNodes(search as string, project as string);
         } else {
-          // Get all nodes (limit to prevent overwhelming response)
-          const query = `MATCH (n) RETURN n LIMIT 100`;
-          result = await this.client.runQuery(query);
+          // Get all nodes for project (limit to prevent overwhelming response)
+          const query = `MATCH (n {project_id: $project}) RETURN n LIMIT 100`;
+          result = await this.client.runQuery(query, { project });
         }
         
         res.json(result);
@@ -75,7 +80,13 @@ export class SSEHandler extends BaseHandler {
 
     this.app.get('/api/nodes/:id', async (req, res) => {
       try {
-        const node = await this.nodeManager.getNode(req.params.id);
+        const { project } = req.query;
+        
+        if (!project) {
+          return res.status(400).json({ error: 'Project parameter is required' });
+        }
+        
+        const node = await this.nodeManager.getNode(req.params.id, project as string);
         if (node) {
           res.json(node);
         } else {
@@ -88,15 +99,20 @@ export class SSEHandler extends BaseHandler {
 
     this.app.get('/api/edges', async (req, res) => {
       try {
-        const { source, type } = req.query;
+        const { source, type, project } = req.query;
+        
+        if (!project) {
+          return res.status(400).json({ error: 'Project parameter is required' });
+        }
+        
         let result;
         
         if (source) {
-          result = await this.edgeManager.findEdgesBySource(source as string);
+          result = await this.edgeManager.findEdgesBySource(source as string, project as string);
         } else {
-          // Get all edges (limit to prevent overwhelming response)  
-          const query = `MATCH (a)-[r]->(b) RETURN r LIMIT 100`;
-          result = await this.client.runQuery(query);
+          // Get all edges for project (limit to prevent overwhelming response)  
+          const query = `MATCH (a)-[r {project_id: $project}]->(b) RETURN r LIMIT 100`;
+          result = await this.client.runQuery(query, { project });
         }
         
         res.json(result);
@@ -107,7 +123,13 @@ export class SSEHandler extends BaseHandler {
 
     this.app.get('/api/edges/:id', async (req, res) => {
       try {
-        const edge = await this.edgeManager.getEdge(req.params.id);
+        const { project } = req.query;
+        
+        if (!project) {
+          return res.status(400).json({ error: 'Project parameter is required' });
+        }
+        
+        const edge = await this.edgeManager.getEdge(req.params.id, project as string);
         if (edge) {
           res.json(edge);
         } else {
@@ -121,7 +143,13 @@ export class SSEHandler extends BaseHandler {
     // Analysis endpoints
     this.app.get('/api/analysis/inheritance/:className', async (req, res) => {
       try {
-        const hierarchy = await this.edgeManager.findInheritanceHierarchy(req.params.className);
+        const { project } = req.query;
+        
+        if (!project) {
+          return res.status(400).json({ error: 'Project parameter is required' });
+        }
+        
+        const hierarchy = await this.edgeManager.findInheritanceHierarchy(req.params.className, project as string);
         res.json(hierarchy);
       } catch (error) {
         res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
@@ -130,7 +158,13 @@ export class SSEHandler extends BaseHandler {
 
     this.app.get('/api/analysis/implementations/:interfaceName', async (req, res) => {
       try {
-        const implementations = await this.edgeManager.findClassesThatImplementInterface(req.params.interfaceName);
+        const { project } = req.query;
+        
+        if (!project) {
+          return res.status(400).json({ error: 'Project parameter is required' });
+        }
+        
+        const implementations = await this.edgeManager.findClassesThatImplementInterface(req.params.interfaceName, project as string);
         res.json(implementations);
       } catch (error) {
         res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
@@ -139,7 +173,13 @@ export class SSEHandler extends BaseHandler {
 
     this.app.get('/api/analysis/callers/:methodName', async (req, res) => {
       try {
-        const callers = await this.edgeManager.findClassesThatCallMethod(req.params.methodName);
+        const { project } = req.query;
+        
+        if (!project) {
+          return res.status(400).json({ error: 'Project parameter is required' });
+        }
+        
+        const callers = await this.edgeManager.findClassesThatCallMethod(req.params.methodName, project as string);
         res.json(callers);
       } catch (error) {
         res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
