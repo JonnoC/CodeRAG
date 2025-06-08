@@ -1,4 +1,5 @@
 import express from 'express';
+import { randomUUID } from 'crypto';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { BaseHandler } from './base-handler.js';
 import { Neo4jClient } from '../graph/neo4j-client.js';
@@ -6,6 +7,7 @@ import { Neo4jClient } from '../graph/neo4j-client.js';
 export class SSEHandler extends BaseHandler {
   private app: express.Application;
   private port: number;
+  private sessions: Map<string, SSEServerTransport> = new Map();
 
   constructor(
     client: Neo4jClient,
@@ -45,10 +47,60 @@ export class SSEHandler extends BaseHandler {
       });
     });
 
-    // SSE endpoint for MCP communication
+    // SSE endpoint for server-to-client communication
     this.app.get('/sse', async (req, res) => {
-      const transport = new SSEServerTransport('/sse', res);
-      await this.server.connect(transport);
+      try {
+        const sessionId = req.query.sessionId as string || randomUUID();
+        
+        // Create new transport for this session
+        const transport = new SSEServerTransport('/sse', res);
+        
+        // Store transport for POST endpoint access
+        this.sessions.set(sessionId, transport);
+        
+        // Connect server to transport
+        await this.server.connect(transport);
+        
+        // Clean up when connection closes
+        req.on('close', () => {
+          this.sessions.delete(sessionId);
+          console.log(`Session ${sessionId} closed`);
+        });
+        
+        res.on('close', () => {
+          this.sessions.delete(sessionId);
+          console.log(`Session ${sessionId} closed via response`);
+        });
+        
+        console.log(`SSE session ${sessionId} established`);
+        
+      } catch (error) {
+        console.error('SSE connection error:', error);
+        res.status(500).json({ error: 'Failed to establish SSE connection' });
+      }
+    });
+
+    // POST endpoint for client-to-server messages
+    this.app.post('/message', async (req, res) => {
+      try {
+        const sessionId = req.query.sessionId as string || req.headers['x-session-id'] as string;
+        
+        if (!sessionId) {
+          return res.status(400).json({ error: 'Session ID required' });
+        }
+        
+        const transport = this.sessions.get(sessionId);
+        if (!transport) {
+          return res.status(404).json({ error: 'Session not found' });
+        }
+        
+        // Use the transport's handlePostMessage method
+        await transport.handlePostMessage(req, res);
+        
+      } catch (error) {
+        console.error('POST message error:', error);
+        res.status(500).json({ error: 'Failed to handle message' });
+      }
     });
 
     // REST API endpoints for direct access to graph data
@@ -258,6 +310,7 @@ export class SSEHandler extends BaseHandler {
         console.log(`CodeRAG MCP Server started on port ${this.port}`);
         console.log(`Health check: http://localhost:${this.port}/health`);
         console.log(`SSE endpoint: http://localhost:${this.port}/sse`);
+        console.log(`Message endpoint: http://localhost:${this.port}/message`);
         console.log(`API endpoints: http://localhost:${this.port}/api/`);
         resolve();
       });

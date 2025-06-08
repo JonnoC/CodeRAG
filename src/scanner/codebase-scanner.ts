@@ -224,7 +224,7 @@ export class CodebaseScanner {
   }
 
   private async findSourceFiles(config: ScanConfig): Promise<string[]> {
-    const patterns = this.getFilePatterns(config.languages);
+    const patterns = this.getFilePatterns(config.languages, config.includeTests);
     const excludePatterns = [
       'node_modules/**',
       'dist/**',
@@ -254,7 +254,7 @@ export class CodebaseScanner {
     return [...new Set(files)].sort();
   }
 
-  private getFilePatterns(languages: Language[]): string[] {
+  private getFilePatterns(languages: Language[], includeTests: boolean = false): string[] {
     const patterns: string[] = [];
     
     if (languages.includes('typescript')) {
@@ -264,7 +264,11 @@ export class CodebaseScanner {
       patterns.push('**/*.js', '**/*.jsx');
     }
     if (languages.includes('java')) {
-      patterns.push('**/*.java');
+      // For Java, only include files from standard Maven/Gradle directory structure
+      patterns.push('src/main/**/*.java');
+      if (includeTests) {
+        patterns.push('src/test/**/*.java');
+      }
     }
     if (languages.includes('python')) {
       patterns.push('**/*.py');
@@ -323,10 +327,29 @@ export class CodebaseScanner {
     console.log(`📥 Storing entities...`);
     const errors: any[] = [];
     
+    // Deduplicate entities by ID + project_id
+    const entityMap = new Map<string, ParsedEntity>();
+    for (const entity of entities) {
+      const key = `${entity.project_id}:${entity.id}`;
+      if (!entityMap.has(key)) {
+        entityMap.set(key, entity);
+      }
+    }
+    const deduplicatedEntities = Array.from(entityMap.values());
+    
+    console.log(`📥 Deduplicated ${entities.length} entities to ${deduplicatedEntities.length}`);
+    
+    // Debug: log entity type counts
+    const entityTypeCounts = deduplicatedEntities.reduce((acc, e) => {
+      acc[e.type] = (acc[e.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    console.log(`📋 Entity types:`, entityTypeCounts);
+    
     // Store entities in batches
     const entityBatchSize = 100;
-    for (let i = 0; i < entities.length; i += entityBatchSize) {
-      const batch = entities.slice(i, i + entityBatchSize);
+    for (let i = 0; i < deduplicatedEntities.length; i += entityBatchSize) {
+      const batch = deduplicatedEntities.slice(i, i + entityBatchSize);
       await Promise.all(batch.map(async (entity) => {
         try {
           await this.nodeManager.addNode({
@@ -358,6 +381,15 @@ export class CodebaseScanner {
     }
 
     console.log(`🔗 Storing relationships...`);
+    
+    // Debug: Check if relationship targets exist in entities
+    const entityIds = new Set(deduplicatedEntities.map(e => e.id));
+    const missingTargets = relationships.filter(r => !entityIds.has(r.source) || !entityIds.has(r.target));
+    console.log(`📋 Missing relationship targets: ${missingTargets.length} out of ${relationships.length}`);
+    
+    if (missingTargets.length > 0) {
+      console.log(`📋 Sample missing targets:`, missingTargets.slice(0, 3).map(r => `${r.source} -> ${r.target} (source exists: ${entityIds.has(r.source)}, target exists: ${entityIds.has(r.target)})`));
+    }
     
     // Store relationships in batches
     const relationshipBatchSize = 100;

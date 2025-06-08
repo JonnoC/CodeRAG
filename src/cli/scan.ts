@@ -23,7 +23,8 @@ program
   .option('-l, --languages <languages>', 'Comma-separated list of languages to scan (typescript,javascript,java,python,csharp)', 'typescript,javascript')
   .option('-e, --exclude <paths>', 'Comma-separated list of paths to exclude', 'node_modules,dist,build')
   .option('--include-tests', 'Include test files in the scan', false)
-  .option('--clear-graph', 'Clear existing graph data before scanning', false)
+  .option('--clear-graph', 'Clear existing graph data for this project before scanning', false)
+  .option('--clear-all', 'Clear ALL graph data (all projects) before scanning', false)
   .option('--analyze', 'Run quality analysis after scanning', false)
   .option('--output-report', 'Generate and save a scan report', false)
   .option('--validate-only', 'Only validate the project structure without scanning', false)
@@ -97,8 +98,10 @@ program
       console.log(`  Exclude paths: ${excludePaths.join(', ')}`);
 
       // Clear graph if requested
-      if (options.clearGraph) {
-        await scanner.clearGraph(projectId);
+      if (options.clearAll) {
+        await scanner.clearGraph(); // Clear all data
+      } else if (options.clearGraph) {
+        await scanner.clearGraph(projectId); // Clear only this project
       }
 
       // Initialize database schema

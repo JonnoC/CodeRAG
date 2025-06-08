@@ -3,7 +3,7 @@
 import { getConfig } from './config.js';
 import { Neo4jClient } from './graph/neo4j-client.js';
 import { StdioHandler } from './mcp/stdio-handler.js';
-import { SSEHandler } from './mcp/sse-handler.js';
+import { HTTPHandler } from './mcp/http-handler.js';
 
 async function main() {
   try {
@@ -17,14 +17,14 @@ async function main() {
 
     // Determine server mode from command line arguments
     const args = process.argv.slice(2);
-    const mode = args.includes('--sse') ? 'sse' : 'stdio';
+    const mode = args.includes('--http') || args.includes('--sse') ? 'http' : 'stdio';
     const port = args.includes('--port') ? 
       parseInt(args[args.indexOf('--port') + 1]) || 3000 : 3000;
 
-    if (mode === 'sse') {
-      // Start SSE server
-      const sseHandler = new SSEHandler(client, port);
-      await sseHandler.start();
+    if (mode === 'http') {
+      // Start HTTP server with official MCP SDK
+      const httpHandler = new HTTPHandler(client, port);
+      await httpHandler.start();
     } else {
       // Start STDIO server (default)
       const stdioHandler = new StdioHandler(client);

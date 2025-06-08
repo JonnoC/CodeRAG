@@ -5,6 +5,7 @@ import { AnnotationInfo } from '../../types.js';
 
 export class JavaParser implements LanguageParser {
   private currentProjectId: string = '';
+  private createdPackages: Map<string, Set<string>> = new Map();
 
   canParse(filePath: string): boolean {
     const ext = path.extname(filePath).toLowerCase();
@@ -31,6 +32,11 @@ export class JavaParser implements LanguageParser {
     errors: ParseError[];
   }> {
     this.currentProjectId = projectId;
+    
+    // Initialize created packages set for this project if not exists
+    if (!this.createdPackages.has(projectId)) {
+      this.createdPackages.set(projectId, new Set());
+    }
     const entities: ParsedEntity[] = [];
     const relationships: ParsedRelationship[] = [];
     const errors: ParseError[] = [];
@@ -43,16 +49,18 @@ export class JavaParser implements LanguageParser {
       // Parse imports for type resolution
       const imports = this.extractImports(content);
 
-      // Add package entity if not default
-      if (packageName && packageName !== 'default') {
+      // Add package entity if not default and not already created for this project
+      const projectPackages = this.createdPackages.get(projectId)!;
+      if (packageName && packageName !== 'default' && !projectPackages.has(packageId)) {
         this.addEntity(entities, {
           id: packageId,
           type: 'package',
           name: packageName,
           qualified_name: packageName,
-          source_file: path.dirname(filePath),
+          source_file: packageName.replace(/\./g, '/'),
           description: `Package: ${packageName}`
         });
+        projectPackages.add(packageId);
       }
 
       // Parse classes, interfaces, enums
@@ -450,15 +458,34 @@ export class JavaParser implements LanguageParser {
     filePath: string,
     baseLineNumber: number
   ): void {
-    // Match method declarations
-    const methodRegex = /(?:(?:public|private|protected|static|final|abstract|synchronized|native)\s+)*(?:[A-Za-z_$][A-Za-z0-9_$.<>,\[\]\s]*\s+)?([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)\s*(?:throws\s+[A-Za-z_$][A-Za-z0-9_$.<>,\s]*)?(?:\s*\{|\s*;)/g;
+    // Parse method declarations at class level using context-aware approach
+    // This combines pattern matching with brace-level analysis to distinguish
+    // method declarations from method calls inside method bodies
+    
+    // First pass: identify all method-like patterns
+    const methodLikePattern = /(?:^|\n)\s*(?:@[A-Za-z_$][A-Za-z0-9_$]*(?:\([^)]*\))?\s*)*(?:(public|private|protected|static|final|abstract|synchronized|native|default)\s+)*([A-Za-z_$][A-Za-z0-9_$.<>,\[\]\s]*)\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\([^)]*\)\s*(?:throws\s+[A-Za-z_$][A-Za-z0-9_$.<>,\s]+)?\s*([{;])/gm;
     
     let match;
-    while ((match = methodRegex.exec(classContent)) !== null) {
-      const methodName = match[1];
+    
+    while ((match = methodLikePattern.exec(classContent)) !== null) {
+      const fullMatch = match[0];
+      const modifiersPart = match[1] || '';
+      const extractedReturnType = match[2]?.trim();
+      const methodName = match[3];
+      const endChar = match[4]; // Either '{' or ';'
       
       // Skip if this looks like a class declaration or other non-method
       if (methodName === 'class' || methodName === 'interface' || methodName === 'enum') {
+        continue;
+      }
+      
+      // Check if this is at class level (not inside a method body)
+      if (!this.isAtClassLevel(classContent, match.index)) {
+        continue;
+      }
+      
+      // Validate this is a proper method declaration
+      if (!this.isValidMethodSignature(fullMatch, modifiersPart, extractedReturnType, methodName, endChar)) {
         continue;
       }
       
@@ -590,6 +617,93 @@ export class JavaParser implements LanguageParser {
     }
     
     return modifiers;
+  }
+
+  private isAtClassLevel(classContent: string, matchIndex: number): boolean {
+    // Check if this match is at class level (not inside a method body)
+    const beforeMatch = classContent.substring(0, matchIndex);
+    
+    // Track brace nesting level, excluding strings and comments
+    let braceLevel = 0;
+    let inString = false;
+    let inChar = false;
+    let inComment = false;
+    let inLineComment = false;
+    let lastMethodOpenBrace = -1;
+    
+    for (let i = 0; i < beforeMatch.length; i++) {
+      const char = beforeMatch[i];
+      const nextChar = beforeMatch[i + 1];
+      
+      // Handle line comments
+      if (char === '/' && nextChar === '/' && !inString && !inChar && !inComment) {
+        inLineComment = true;
+        continue;
+      }
+      if (inLineComment && char === '\n') {
+        inLineComment = false;
+        continue;
+      }
+      if (inLineComment) continue;
+      
+      // Handle block comments
+      if (char === '/' && nextChar === '*' && !inString && !inChar) {
+        inComment = true;
+        i++; // Skip the *
+        continue;
+      }
+      if (inComment && char === '*' && nextChar === '/') {
+        inComment = false;
+        i++; // Skip the /
+        continue;
+      }
+      if (inComment) continue;
+      
+      // Handle strings
+      if (char === '"' && !inChar && !inComment && beforeMatch[i-1] !== '\\') {
+        inString = !inString;
+        continue;
+      }
+      if (char === "'" && !inString && !inComment && beforeMatch[i-1] !== '\\') {
+        inChar = !inChar;
+        continue;
+      }
+      if (inString || inChar) continue;
+      
+      // Count braces
+      if (char === '{') {
+        braceLevel++;
+        // Track if this might be a method opening brace
+        if (braceLevel === 1) {
+          lastMethodOpenBrace = i;
+        }
+      } else if (char === '}') {
+        braceLevel--;
+      }
+    }
+    
+    // We're at class level if brace level is 0 (not inside any method body)
+    return braceLevel === 0;
+  }
+
+  private isValidMethodSignature(fullMatch: string, modifiersPart: string, returnType: string | undefined, methodName: string, endChar: string): boolean {
+    // Skip obvious non-methods
+    if (!methodName || methodName.length === 0) {
+      return false;
+    }
+    
+    // Must have either access modifiers, other modifiers, or be a constructor
+    const hasAccessModifiers = modifiersPart && /^(public|private|protected)/.test(modifiersPart);
+    const hasOtherModifiers = modifiersPart && /^(static|final|abstract|synchronized|native|default)/.test(modifiersPart);
+    const isConstructor = /^[A-Z]/.test(methodName); // Constructors start with uppercase
+    const hasReturnType = returnType && returnType.length > 0 && !/^\s*$/.test(returnType);
+    
+    // Valid if:
+    // 1. Has access modifiers OR
+    // 2. Has other modifiers OR  
+    // 3. Is a constructor OR
+    // 4. Has a clear return type and ends with { or ;
+    return Boolean(hasAccessModifiers || hasOtherModifiers || isConstructor || (hasReturnType && (endChar === '{' || endChar === ';')));
   }
 
   private extractJavaDoc(content: string, position: number): string | undefined {

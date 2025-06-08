@@ -4,6 +4,7 @@ describe('Types', () => {
   test('should create a valid CodeNode', () => {
     const node: CodeNode = {
       id: 'test-id',
+      project_id: 'test-project',
       type: 'class',
       name: 'TestClass',
       qualified_name: 'com.example.TestClass',
@@ -34,6 +35,7 @@ describe('Types', () => {
   test('should create a valid CodeEdge', () => {
     const edge: CodeEdge = {
       id: 'edge-id',
+      project_id: 'test-project',
       type: 'implements',
       source: 'source-node-id',
       target: 'target-node-id',
@@ -52,6 +54,7 @@ describe('Types', () => {
   test('should allow minimal CodeNode', () => {
     const node: CodeNode = {
       id: 'minimal-id',
+      project_id: 'test-project',
       type: 'function',
       name: 'testFunction',
       qualified_name: 'testFunction'
@@ -66,6 +69,7 @@ describe('Types', () => {
   test('should allow minimal CodeEdge', () => {
     const edge: CodeEdge = {
       id: 'minimal-edge-id',
+      project_id: 'test-project',
       type: 'calls',
       source: 'source-id',
       target: 'target-id'

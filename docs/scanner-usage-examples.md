@@ -86,8 +86,11 @@ npm run scan /path/to/project -- --analyze
 
 ### 3. Clear and Rescan
 ```bash
-# Clear existing graph data before scanning
+# Clear this project's data before scanning
 npm run scan /path/to/project -- --clear-graph --analyze
+
+# Clear ALL database data before scanning (all projects)
+npm run scan /path/to/project -- --clear-all --analyze
 ```
 
 ### 4. Include Test Files
@@ -173,8 +176,8 @@ mcp call calculate_package_metrics --arguments '{"package_name": "com.example.co
 
 ### 3. Microservices Architecture Analysis
 ```bash
-# Scan each service separately
-npm run scan /path/to/service-a -- --clear-graph
+# Scan each service separately (clear all data for first service)
+npm run scan /path/to/service-a -- --clear-all
 npm run scan /path/to/service-b
 npm run scan /path/to/service-c
 
