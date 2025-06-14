@@ -4,11 +4,13 @@ import { RelationshipBuilder } from '../../base/RelationshipBuilder.js';
 import { TypeScriptContentExtractor } from '../../extractors/typescript/TypeScriptContentExtractor.js';
 import { JsDocExtractor } from '../../extractors/typescript/JsDocExtractor.js';
 import { TypeScriptFrameworkDetector } from '../../framework-detection/typescript/TypeScriptFrameworkDetector.js';
+import { TypeScriptAnnotationExtractor } from '../../extractors/typescript/TypeScriptAnnotationExtractor.js';
 
 export class TypeScriptClassParser {
   private contentExtractor = new TypeScriptContentExtractor();
   private docExtractor = new JsDocExtractor();
   private frameworkDetector = new TypeScriptFrameworkDetector();
+  private annotationExtractor = new TypeScriptAnnotationExtractor();
 
   parseClasses(
     content: string, 
@@ -30,8 +32,9 @@ export class TypeScriptClassParser {
         ? this.docExtractor.extractDocumentation(content, this.getPositionFromLine(content, parsedClass.startLine))
         : undefined;
 
-      // Extract decorators
-      const decorators = this.extractDecorators(content, parsedClass.startLine || 1);
+      // Extract decorators using modular extractor
+      const decoratorResult = this.annotationExtractor.extractAnnotations(content, this.getPositionFromLine(content, parsedClass.startLine || 1));
+      const decorators = decoratorResult.annotations;
 
       // Create class entity
       const classEntity = EntityFactory.createClass(
@@ -70,34 +73,6 @@ export class TypeScriptClassParser {
     }
   }
 
-  private extractDecorators(content: string, startLine: number): any[] {
-    const decorators: any[] = [];
-    const lines = content.split('\n');
-    
-    // Look backwards from the class declaration for decorators
-    for (let i = startLine - 2; i >= 0; i--) {
-      const line = lines[i].trim();
-      if (!line || line.startsWith('//') || line.startsWith('/*')) continue;
-      
-      const decoratorMatch = line.match(/@([A-Za-z_][A-Za-z0-9_]*)(?:\(([^)]*)\))?/);
-      if (decoratorMatch) {
-        const decoratorName = decoratorMatch[1];
-        const framework = this.frameworkDetector.detectFramework(decoratorName) || 'Unknown';
-        const category = this.frameworkDetector.categorizeAnnotation(decoratorName) || 'unknown';
-        
-        decorators.unshift({
-          name: decoratorName,
-          framework,
-          category,
-          parameters: decoratorMatch[2] ? decoratorMatch[2].split(',').map(p => p.trim()) : []
-        });
-      } else if (line && !line.startsWith('@')) {
-        break; // Stop at non-decorator content
-      }
-    }
-    
-    return decorators;
-  }
 
   private resolveType(typeName: string, moduleName: string, imports: any[]): string {
     // Remove generic type parameters

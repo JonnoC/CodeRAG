@@ -4,11 +4,13 @@ import { RelationshipBuilder } from '../../base/RelationshipBuilder.js';
 import { JavaContentExtractor } from '../../extractors/java/JavaContentExtractor.js';
 import { JavaDocExtractor } from '../../extractors/java/JavaDocExtractor.js';
 import { JavaFrameworkDetector } from '../../framework-detection/java/JavaFrameworkDetector.js';
+import { JavaAnnotationExtractor } from '../../extractors/java/JavaAnnotationExtractor.js';
 
 export class JavaClassParser {
   private contentExtractor = new JavaContentExtractor();
   private docExtractor = new JavaDocExtractor();
   private frameworkDetector = new JavaFrameworkDetector();
+  private annotationExtractor = new JavaAnnotationExtractor();
 
   parseClasses(
     content: string, 
@@ -30,8 +32,9 @@ export class JavaClassParser {
         ? this.docExtractor.extractDocumentation(content, this.getPositionFromLine(content, parsedClass.startLine))
         : undefined;
 
-      // Extract annotations
-      const annotations = this.extractAnnotations(content, parsedClass.startLine || 1);
+      // Extract annotations using modular extractor
+      const annotationResult = this.annotationExtractor.extractAnnotations(content, this.getPositionFromLine(content, parsedClass.startLine || 1));
+      const annotations = annotationResult.annotations;
 
       // Create class entity
       const classEntity = EntityFactory.createClass(
