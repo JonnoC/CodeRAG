@@ -1,5 +1,5 @@
-import { BaseLanguageParser } from '../../src/scanner/parsers/base/BaseLanguageParser.js';
-import { ParsedEntity, ParsedRelationship, ParseError } from '../../src/scanner/types.js';
+import { BaseLanguageParser } from '../../../../src/scanner/parsers/base/BaseLanguageParser.js';
+import { ParsedEntity, ParsedRelationship, ParseError } from '../../../../src/scanner/types.js';
 
 describe('BaseLanguageParser', () => {
   class TestParser extends BaseLanguageParser {

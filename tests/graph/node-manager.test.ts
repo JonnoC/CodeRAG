@@ -1,9 +1,9 @@
-import { NodeManager } from '../src/graph/node-manager.js';
-import { Neo4jClient } from '../src/graph/neo4j-client.js';
-import { CodeNode } from '../src/types.js';
+import { NodeManager } from '../../src/graph/node-manager.js';
+import { Neo4jClient } from '../../src/graph/neo4j-client.js';
+import { CodeNode } from '../../src/types.js';
 
 // Mock the Neo4jClient
-jest.mock('../src/graph/neo4j-client.js');
+jest.mock('../../src/graph/neo4j-client.js');
 
 describe('NodeManager', () => {
   let nodeManager: NodeManager;

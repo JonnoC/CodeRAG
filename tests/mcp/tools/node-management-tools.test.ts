@@ -1,9 +1,9 @@
-import { NodeManager } from '../src/graph/node-manager.js';
-import { addNode, updateNode, getNode, deleteNode, findNodesByType, searchNodes } from '../src/mcp/tools/node-management.js';
-import { CodeNode } from '../src/types.js';
+import { NodeManager } from '../../../src/graph/node-manager.js';
+import { addNode, updateNode, getNode, deleteNode, findNodesByType, searchNodes } from '../../../src/mcp/tools/node-management.js';
+import { CodeNode } from '../../../src/types.js';
 
 // Mock the NodeManager
-jest.mock('../src/graph/node-manager.js');
+jest.mock('../../../src/graph/node-manager.js');
 
 describe('Node Management Tools', () => {
   let mockNodeManager: jest.Mocked<NodeManager>;

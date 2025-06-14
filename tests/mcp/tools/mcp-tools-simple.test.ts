@@ -1,7 +1,7 @@
 // Simple tests for MCP tools to boost coverage
-import { addEdge, getEdge, deleteEdge, findEdgesBySource } from '../src/mcp/tools/edge-management.js';
-import { findMethodCallers, findImplementations, findInheritanceHierarchy } from '../src/mcp/tools/relationship-analysis.js';
-import { calculateCKMetrics, calculatePackageMetrics, findArchitecturalIssues, getProjectSummary } from '../src/mcp/tools/metrics-analysis.js';
+import { addEdge, getEdge, deleteEdge, findEdgesBySource } from '../../../src/mcp/tools/edge-management.js';
+import { findMethodCallers, findImplementations, findInheritanceHierarchy } from '../../../src/mcp/tools/relationship-analysis.js';
+import { calculateCKMetrics, calculatePackageMetrics, findArchitecturalIssues, getProjectSummary } from '../../../src/mcp/tools/metrics-analysis.js';
 
 // Mock the managers
 const mockEdgeManager = {

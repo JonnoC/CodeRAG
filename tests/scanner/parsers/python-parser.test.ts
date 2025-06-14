@@ -1,4 +1,4 @@
-import { PythonParser } from '../../src/scanner/parsers/python-parser.js';
+import { PythonParser } from '../../../src/scanner/parsers/python-parser.js';
 
 describe('PythonParser', () => {
   let parser: PythonParser;

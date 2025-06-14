@@ -1,4 +1,4 @@
-import { TypeScriptParser } from '../../src/scanner/parsers/typescript-parser.js';
+import { TypeScriptParser } from '../../../src/scanner/parsers/typescript-parser.js';
 
 describe('TypeScriptParser', () => {
   let parser: TypeScriptParser;

@@ -1,9 +1,9 @@
-import { EdgeManager } from '../src/graph/edge-manager.js';
-import { Neo4jClient } from '../src/graph/neo4j-client.js';
-import { CodeEdge } from '../src/types.js';
+import { EdgeManager } from '../../src/graph/edge-manager.js';
+import { Neo4jClient } from '../../src/graph/neo4j-client.js';
+import { CodeEdge } from '../../src/types.js';
 
 // Mock the Neo4jClient
-jest.mock('../src/graph/neo4j-client.js');
+jest.mock('../../src/graph/neo4j-client.js');
 
 describe('EdgeManager', () => {
   let edgeManager: EdgeManager;

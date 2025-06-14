@@ -1,4 +1,4 @@
-import { JavaParser } from '../../src/scanner/parsers/java-parser.js';
+import { JavaParser } from '../../../src/scanner/parsers/java-parser.js';
 
 describe('JavaParser', () => {
   let parser: JavaParser;

@@ -1,9 +1,9 @@
-import { Neo4jClient } from '../src/graph/neo4j-client.js';
-import { listProjects } from '../src/mcp/tools/list-projects.js';
-import { ProjectContext } from '../src/types.js';
+import { Neo4jClient } from '../../../src/graph/neo4j-client.js';
+import { listProjects } from '../../../src/mcp/tools/list-projects.js';
+import { ProjectContext } from '../../../src/types.js';
 
 // Mock the Neo4jClient
-jest.mock('../src/graph/neo4j-client.js');
+jest.mock('../../../src/graph/neo4j-client.js');
 
 describe('List Projects Tool', () => {
   let mockClient: jest.Mocked<Neo4jClient>;

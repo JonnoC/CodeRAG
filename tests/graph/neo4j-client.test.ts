@@ -27,8 +27,8 @@ jest.mock('neo4j-driver', () => ({
   default: mockNeo4j
 }));
 
-import { Neo4jClient } from '../src/graph/neo4j-client.js';
-import { ProjectContext } from '../src/types.js';
+import { Neo4jClient } from '../../src/graph/neo4j-client.js';
+import { ProjectContext } from '../../src/types.js';
 
 describe('Neo4jClient', () => {
   let client: Neo4jClient;

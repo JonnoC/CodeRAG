@@ -1,8 +1,8 @@
-import { MetricsManager } from '../src/analysis/metrics-manager.js';
-import { Neo4jClient } from '../src/graph/neo4j-client.js';
+import { MetricsManager } from '../../src/analysis/metrics-manager.js';
+import { Neo4jClient } from '../../src/graph/neo4j-client.js';
 
 // Mock the Neo4jClient
-jest.mock('../src/graph/neo4j-client.js');
+jest.mock('../../src/graph/neo4j-client.js');
 
 describe('MetricsManager', () => {
   let metricsManager: MetricsManager;

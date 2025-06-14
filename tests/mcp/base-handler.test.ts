@@ -1,9 +1,9 @@
-import { BaseHandler } from '../src/mcp/base-handler.js';
-import { Neo4jClient } from '../src/graph/neo4j-client.js';
+import { BaseHandler } from '../../src/mcp/base-handler.js';
+import { Neo4jClient } from '../../src/graph/neo4j-client.js';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 // Mock all dependencies
-jest.mock('../src/graph/neo4j-client.js');
+jest.mock('../../src/graph/neo4j-client.js');
 jest.mock('@modelcontextprotocol/sdk/server/index.js');
 
 // Create a concrete implementation for testing
