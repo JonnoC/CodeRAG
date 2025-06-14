@@ -33,7 +33,10 @@ export async function findImplementations(
 ) {
   const result = await edgeManager.findClassesThatImplementInterface(params.interfaceName, params.projectId);
   return {
-    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    content: [{ 
+      type: 'text', 
+      text: result.length > 0 ? JSON.stringify(result, null, 2) : 'No classes found' 
+    }]
   };
 }
 

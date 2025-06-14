@@ -47,54 +47,82 @@ export async function addNode(
   nodeManager: NodeManager,
   params: AddNodeParams
 ) {
-  const node: CodeNode = {
-    id: params.id,
-    project_id: params.project,
-    type: params.type,
-    name: params.name,
-    qualified_name: params.qualified_name,
-    description: params.description,
-    source_file: params.source_file,
-    start_line: params.start_line,
-    end_line: params.end_line,
-    modifiers: params.modifiers,
-    attributes: params.attributes
-  };
+  try {
+    const node: CodeNode = {
+      id: params.id,
+      project_id: params.project,
+      type: params.type,
+      name: params.name,
+      qualified_name: params.qualified_name,
+      description: params.description,
+      source_file: params.source_file,
+      start_line: params.start_line,
+      end_line: params.end_line,
+      modifiers: params.modifiers,
+      attributes: params.attributes
+    };
 
-  const result = await nodeManager.addNode(node);
-  return {
-    content: [{ type: 'text', text: `Node created successfully: ${JSON.stringify(result, null, 2)}` }]
-  };
+    const result = await nodeManager.addNode(node);
+    return {
+      content: [{ type: 'text', text: `Node created successfully: ${JSON.stringify(result, null, 2)}` }]
+    };
+  } catch (error) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: `Failed to add node: ${error instanceof Error ? error.message : String(error)}` }]
+    };
+  }
 }
 
 export async function updateNode(
   nodeManager: NodeManager,
   params: UpdateNodeParams
 ) {
-  const result = await nodeManager.updateNode(params.id, params.project, params.updates);
-  return {
-    content: [{ type: 'text', text: `Node updated successfully: ${JSON.stringify(result, null, 2)}` }]
-  };
+  try {
+    const result = await nodeManager.updateNode(params.id, params.project, params.updates);
+    return {
+      content: [{ type: 'text', text: `Node updated successfully: ${JSON.stringify(result, null, 2)}` }]
+    };
+  } catch (error) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: `Failed to update node: ${error instanceof Error ? error.message : String(error)}` }]
+    };
+  }
 }
 
 export async function getNode(
   nodeManager: NodeManager,
   params: GetNodeParams
 ) {
-  const result = await nodeManager.getNode(params.nodeId, params.projectId);
-  return {
-    content: [{ type: 'text', text: result ? JSON.stringify(result, null, 2) : 'Node not found' }]
-  };
+  try {
+    const result = await nodeManager.getNode(params.nodeId, params.projectId);
+    return {
+      content: [{ type: 'text', text: result ? JSON.stringify(result, null, 2) : 'Node not found' }]
+    };
+  } catch (error) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: `Failed to get node: ${error instanceof Error ? error.message : String(error)}` }]
+    };
+  }
 }
 
 export async function deleteNode(
   nodeManager: NodeManager,
   params: DeleteNodeParams
 ) {
-  const result = await nodeManager.deleteNode(params.id, params.project);
-  return {
-    content: [{ type: 'text', text: result ? 'Node deleted successfully' : 'Node not found' }]
-  };
+  try {
+    const result = await nodeManager.deleteNode(params.id, params.project);
+    return {
+      content: [{ type: 'text', text: result ? 'Node deleted successfully' : 'Node not found' }]
+    };
+  } catch (error) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: `Failed to delete node: ${error instanceof Error ? error.message : String(error)}` }]
+    };
+  }
 }
 
 export async function findNodesByType(

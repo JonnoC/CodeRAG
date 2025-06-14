@@ -72,6 +72,9 @@ export async function findEdgesBySource(
 ) {
   const result = await edgeManager.findEdgesBySource(params.sourceId, params.project);
   return {
-    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    content: [{ 
+      type: 'text', 
+      text: result.length > 0 ? JSON.stringify(result, null, 2) : 'No edges found' 
+    }]
   };
 }

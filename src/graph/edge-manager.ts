@@ -258,32 +258,35 @@ export class EdgeManager {
   }
 
   private ensurePlainObject(value: any): any {
-    // Force JSON serialization to ensure completely plain objects
-    try {
-      if (value === null || value === undefined) {
-        return value;
+    if (value === null || value === undefined) {
+      return value;
+    }
+    
+    // Handle Maps first (before JSON serialization)
+    if (value instanceof Map) {
+      const obj: any = {};
+      for (const [k, v] of value.entries()) {
+        obj[k] = this.ensurePlainObject(v);
       }
-      // JSON serialization will convert Maps, Sets, and other complex objects to plain objects
+      return obj;
+    }
+    
+    if (Array.isArray(value)) {
+      return value.map(item => this.ensurePlainObject(item));
+    }
+    
+    if (value && typeof value === 'object' && value.constructor === Object) {
+      const obj: any = {};
+      for (const [k, v] of Object.entries(value)) {
+        obj[k] = this.ensurePlainObject(v);
+      }
+      return obj;
+    }
+    
+    // Try JSON serialization for other complex objects
+    try {
       return JSON.parse(JSON.stringify(value));
     } catch (error) {
-      // Fallback to original logic if JSON serialization fails
-      if (value instanceof Map) {
-        const obj: any = {};
-        for (const [k, v] of value.entries()) {
-          obj[k] = this.ensurePlainObject(v);
-        }
-        return obj;
-      }
-      if (Array.isArray(value)) {
-        return value.map(item => this.ensurePlainObject(item));
-      }
-      if (value && typeof value === 'object' && value.constructor === Object) {
-        const obj: any = {};
-        for (const [k, v] of Object.entries(value)) {
-          obj[k] = this.ensurePlainObject(v);
-        }
-        return obj;
-      }
       return value;
     }
   }
