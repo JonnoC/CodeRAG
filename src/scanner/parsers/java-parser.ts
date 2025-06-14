@@ -41,6 +41,13 @@ export class JavaParser extends BaseLanguageParser {
     const errors: ParseError[] = [];
 
     try {
+      // Check if file is effectively empty (only whitespace/comments)
+      const trimmedContent = content.trim();
+      if (trimmedContent === '') {
+        // Empty file - return empty arrays
+        return { entities, relationships, errors };
+      }
+
       // Extract basic content structure
       const extractionResult = this.contentExtractor.extractContent(content, filePath);
       const packageName = extractionResult.packageName || this.getPackageFromPath(filePath);
