@@ -71,7 +71,7 @@ export class TypeScriptParser implements LanguageParser {
 
     } catch (error) {
       errors.push({
-        file: filePath,
+        file_path: filePath,
         message: `Parse error: ${error instanceof Error ? error.message : String(error)}`,
         severity: 'error'
       });
@@ -169,7 +169,8 @@ export class TypeScriptParser implements LanguageParser {
         id: `${classId}_extends_${parentId}`,
         type: 'extends',
         source: classId,
-        target: parentId
+        target: parentId,
+        source_file: filePath
       });
     }
 
@@ -186,7 +187,8 @@ export class TypeScriptParser implements LanguageParser {
             id: `${classId}_implements_${interfaceId}`,
             type: 'implements',
             source: classId,
-            target: interfaceId
+            target: interfaceId,
+            source_file: filePath
           });
         }
       }
@@ -200,7 +202,8 @@ export class TypeScriptParser implements LanguageParser {
         id: `${classId}_belongs_to_${packageId}`,
         type: 'belongs_to',
         source: classId,
-        target: packageId
+        target: packageId,
+        source_file: filePath
       });
     }
 
@@ -251,7 +254,8 @@ export class TypeScriptParser implements LanguageParser {
             id: `${interfaceId}_extends_${parentId}`,
             type: 'extends',
             source: interfaceId,
-            target: parentId
+            target: parentId,
+            source_file: filePath
           });
         }
       }
@@ -265,7 +269,8 @@ export class TypeScriptParser implements LanguageParser {
         id: `${interfaceId}_belongs_to_${packageId}`,
         type: 'belongs_to',
         source: interfaceId,
-        target: packageId
+        target: packageId,
+        source_file: filePath
       });
     }
 
@@ -312,7 +317,8 @@ export class TypeScriptParser implements LanguageParser {
         id: `${enumId}_belongs_to_${packageId}`,
         type: 'belongs_to',
         source: enumId,
-        target: packageId
+        target: packageId,
+        source_file: filePath
       });
     }
   }
@@ -357,7 +363,8 @@ export class TypeScriptParser implements LanguageParser {
         id: `${functionId}_belongs_to_${packageId}`,
         type: 'belongs_to',
         source: functionId,
-        target: packageId
+        target: packageId,
+        source_file: filePath
       });
     }
   }
@@ -390,7 +397,8 @@ export class TypeScriptParser implements LanguageParser {
           id: `${moduleId}_belongs_to_${packageId}`,
           type: 'belongs_to',
           source: moduleId,
-          target: packageId
+          target: packageId,
+          source_file: filePath
         });
       }
     }
@@ -457,7 +465,8 @@ export class TypeScriptParser implements LanguageParser {
       id: `${classId}_contains_${methodId}`,
       type: 'contains',
       source: classId,
-      target: methodId
+      target: methodId,
+      source_file: filePath
     });
   }
 
@@ -498,7 +507,8 @@ export class TypeScriptParser implements LanguageParser {
       id: `${classId}_contains_${propertyId}`,
       type: 'contains',
       source: classId,
-      target: propertyId
+      target: propertyId,
+      source_file: filePath
     });
   }
 
@@ -541,7 +551,8 @@ export class TypeScriptParser implements LanguageParser {
       id: `${interfaceId}_contains_${memberId}`,
       type: 'contains',
       source: interfaceId,
-      target: memberId
+      target: memberId,
+      source_file: filePath
     });
   }
 

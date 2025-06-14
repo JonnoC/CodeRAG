@@ -484,7 +484,7 @@ ${topClasses.join('\n') || '  No classes found'}
 
 ${errors.length > 0 ? `
 ⚠️ ISSUES DETECTED
-${errors.slice(0, 10).map(e => `  • ${e.file}: ${e.message}`).join('\n')}
+${errors.slice(0, 10).map(e => `  • ${e.file_path}: ${e.message}`).join('\n')}
 ${errors.length > 10 ? `  ... and ${errors.length - 10} more` : ''}
 ` : '✅ No issues detected'}
 

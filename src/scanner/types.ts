@@ -22,6 +22,7 @@ export interface ParsedEntity {
   start_line?: number;
   end_line?: number;
   modifiers?: string[];
+  annotations?: any[];
   attributes?: {
     parameters?: Array<{
       name: string;
@@ -41,6 +42,7 @@ export interface ParsedRelationship {
   type: 'calls' | 'implements' | 'extends' | 'contains' | 'references' | 'throws' | 'belongs_to';
   source: string;
   target: string;
+  source_file: string;
   attributes?: {
     [key: string]: any;
   };
@@ -59,10 +61,11 @@ export interface ParseResult {
 }
 
 export interface ParseError {
-  file: string;
+  project_id?: string;
+  file_path: string;
   line?: number;
   message: string;
-  severity: 'warning' | 'error';
+  severity?: 'warning' | 'error';
 }
 
 export interface LanguageParser {

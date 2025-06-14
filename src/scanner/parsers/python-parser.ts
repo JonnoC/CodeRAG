@@ -63,7 +63,7 @@ export class PythonParser implements LanguageParser {
 
     } catch (error) {
       errors.push({
-        file: filePath,
+        file_path: filePath,
         message: `Parse error: ${error instanceof Error ? error.message : String(error)}`,
         severity: 'error'
       });
@@ -136,7 +136,8 @@ export class PythonParser implements LanguageParser {
               id: `${classId}_extends_${parentId}`,
               type: 'extends',
               source: classId,
-              target: parentId
+              target: parentId,
+              source_file: filePath
             });
           } else {
             // Additional parents (multiple inheritance or mixins)
@@ -146,7 +147,8 @@ export class PythonParser implements LanguageParser {
               id: `${classId}_implements_${parentId}`,
               type: 'implements',
               source: classId,
-              target: parentId
+              target: parentId,
+              source_file: filePath
             });
           }
         }
@@ -160,7 +162,8 @@ export class PythonParser implements LanguageParser {
           id: `${classId}_belongs_to_${moduleName}`,
           type: 'belongs_to',
           source: classId,
-          target: moduleName
+          target: moduleName,
+          source_file: filePath
         });
       }
 
@@ -222,7 +225,8 @@ export class PythonParser implements LanguageParser {
             id: `${functionId}_belongs_to_${moduleName}`,
             type: 'belongs_to',
             source: functionId,
-            target: moduleName
+            target: moduleName,
+            source_file: filePath
           });
         }
       }
@@ -275,7 +279,8 @@ export class PythonParser implements LanguageParser {
         id: `${exceptionId}_extends_${parentId}`,
         type: 'extends',
         source: exceptionId,
-        target: parentId
+        target: parentId,
+        source_file: filePath
       });
 
       // Create belongs_to relationship
@@ -284,7 +289,8 @@ export class PythonParser implements LanguageParser {
           id: `${exceptionId}_belongs_to_${moduleName}`,
           type: 'belongs_to',
           source: exceptionId,
-          target: exceptionId
+          target: moduleName,
+          source_file: filePath
         });
       }
     }
@@ -379,7 +385,8 @@ export class PythonParser implements LanguageParser {
         id: `${classId}_contains_${methodId}`,
         type: 'contains',
         source: classId,
-        target: methodId
+        target: methodId,
+        source_file: filePath
       });
     }
   }
@@ -442,7 +449,8 @@ export class PythonParser implements LanguageParser {
         id: `${classId}_contains_${attributeId}`,
         type: 'contains',
         source: classId,
-        target: attributeId
+        target: attributeId,
+        source_file: filePath
       });
     }
   }

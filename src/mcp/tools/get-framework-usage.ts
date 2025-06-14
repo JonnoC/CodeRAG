@@ -19,8 +19,7 @@ export async function getFrameworkUsage(
     WHERE annotation.framework IS NOT NULL
     WITH annotation.framework as framework,
          annotation.name as annotation_name,
-         annotation.category as category,
-         ${include_parameters ? 'annotation.parameters as parameters,' : ''}
+         annotation.category as category${include_parameters ? ',\n         annotation.parameters as parameters' : ''},
          count(*) as usage_count,
          collect(DISTINCT n.qualified_name) as nodes_using
     WHERE usage_count >= $min_usage_count
@@ -28,8 +27,7 @@ export async function getFrameworkUsage(
            collect({
              name: annotation_name,
              category: category,
-             usage_count: usage_count,
-             ${include_parameters ? 'parameters: parameters,' : ''}
+             usage_count: usage_count${include_parameters ? ',\n             parameters: parameters' : ''},
              sample_nodes: nodes_using[0..5]
            }) as annotations,
            sum(usage_count) as total_framework_usage

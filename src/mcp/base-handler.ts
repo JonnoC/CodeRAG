@@ -23,6 +23,29 @@ import { findDeprecatedCode, findUsageOfDeprecatedCode } from './tools/find-depr
 import { analyzeTestingAnnotations, findUntestableCode } from './tools/analyze-testing-annotations.js';
 import { listProjects } from './tools/list-projects.js';
 
+// Import extracted tool functions
+import { 
+  addNode, updateNode, getNode, deleteNode, findNodesByType, searchNodes,
+  type AddNodeParams, type UpdateNodeParams, type GetNodeParams, 
+  type DeleteNodeParams, type FindNodesByTypeParams, type SearchNodesParams 
+} from './tools/node-management.js';
+import { 
+  addEdge, getEdge, deleteEdge, findEdgesBySource,
+  type AddEdgeParams, type GetEdgeParams, type DeleteEdgeParams, type FindEdgesBySourceParams 
+} from './tools/edge-management.js';
+import { 
+  findMethodCallers, findImplementations, findInheritanceHierarchy,
+  type FindMethodCallersParams, type FindImplementationsParams, type FindInheritanceHierarchyParams 
+} from './tools/relationship-analysis.js';
+import { 
+  calculateCKMetrics, calculatePackageMetrics, findArchitecturalIssues, getProjectSummary,
+  type CalculateCKMetricsParams, type CalculatePackageMetricsParams, type GetProjectSummaryParams 
+} from './tools/metrics-analysis.js';
+import { 
+  addFile, scanDir,
+  type AddFileParams, type ScanDirParams 
+} from './tools/scanner-tools.js';
+
 export abstract class BaseHandler {
   protected server: Server;
   protected nodeManager: NodeManager;
@@ -748,499 +771,81 @@ export abstract class BaseHandler {
 
   // Tool handler methods
   protected async handleAddNode(args: any) {
-    const node: CodeNode = {
-      id: args.id,
-      project_id: args.project,
-      type: args.type,
-      name: args.name,
-      qualified_name: args.qualified_name,
-      description: args.description,
-      source_file: args.source_file,
-      start_line: args.start_line,
-      end_line: args.end_line,
-      modifiers: args.modifiers,
-      attributes: args.attributes
-    };
-
-    const result = await this.nodeManager.addNode(node);
-    return {
-      content: [{ type: 'text', text: `Node created successfully: ${JSON.stringify(result, null, 2)}` }]
-    };
+    return await addNode(this.nodeManager, args as AddNodeParams);
   }
 
   protected async handleUpdateNode(args: any) {
-    const result = await this.nodeManager.updateNode(args.id, args.project, args.updates);
-    return {
-      content: [{ type: 'text', text: `Node updated successfully: ${JSON.stringify(result, null, 2)}` }]
-    };
+    return await updateNode(this.nodeManager, args as UpdateNodeParams);
   }
 
   protected async handleGetNode(args: any) {
-    const result = await this.nodeManager.getNode(args.id, args.project);
-    return {
-      content: [{ type: 'text', text: result ? JSON.stringify(result, null, 2) : 'Node not found' }]
-    };
+    return await getNode(this.nodeManager, args as GetNodeParams);
   }
 
   protected async handleDeleteNode(args: any) {
-    const result = await this.nodeManager.deleteNode(args.id, args.project);
-    return {
-      content: [{ type: 'text', text: result ? 'Node deleted successfully' : 'Node not found' }]
-    };
+    return await deleteNode(this.nodeManager, args as DeleteNodeParams);
   }
 
   protected async handleFindNodesByType(args: any) {
-    const result = await this.nodeManager.findNodesByType(args.type, args.project);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-    };
+    return await findNodesByType(this.nodeManager, args as FindNodesByTypeParams);
   }
 
   protected async handleSearchNodes(args: any) {
-    const result = await this.nodeManager.searchNodes(args.search_term, args.project);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-    };
+    return await searchNodes(this.nodeManager, args as SearchNodesParams);
   }
 
   protected async handleAddEdge(args: any) {
-    const edge: CodeEdge = {
-      id: args.id,
-      project_id: args.project,
-      type: args.type,
-      source: args.source,
-      target: args.target,
-      attributes: args.attributes
-    };
-
-    const result = await this.edgeManager.addEdge(edge);
-    return {
-      content: [{ type: 'text', text: `Edge created successfully: ${JSON.stringify(result, null, 2)}` }]
-    };
+    return await addEdge(this.edgeManager, args as AddEdgeParams);
   }
 
   protected async handleGetEdge(args: any) {
-    const result = await this.edgeManager.getEdge(args.id, args.project);
-    return {
-      content: [{ type: 'text', text: result ? JSON.stringify(result, null, 2) : 'Edge not found' }]
-    };
+    return await getEdge(this.edgeManager, args as GetEdgeParams);
   }
 
   protected async handleDeleteEdge(args: any) {
-    const result = await this.edgeManager.deleteEdge(args.id, args.project);
-    return {
-      content: [{ type: 'text', text: result ? 'Edge deleted successfully' : 'Edge not found' }]
-    };
+    return await deleteEdge(this.edgeManager, args as DeleteEdgeParams);
   }
 
   protected async handleFindEdgesBySource(args: any) {
-    const result = await this.edgeManager.findEdgesBySource(args.source_id, args.project);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-    };
+    return await findEdgesBySource(this.edgeManager, args as FindEdgesBySourceParams);
   }
 
   protected async handleFindClassesCallingMethod(args: any) {
-    const result = await this.edgeManager.findClassesThatCallMethod(args.method_name, args.project);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-    };
+    return await findMethodCallers(this.edgeManager, args as FindMethodCallersParams);
   }
 
   protected async handleFindClassesImplementingInterface(args: any) {
-    const result = await this.edgeManager.findClassesThatImplementInterface(args.interface_name, args.project);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-    };
+    return await findImplementations(this.edgeManager, args as FindImplementationsParams);
   }
 
   protected async handleGetInheritanceHierarchy(args: any) {
-    const result = await this.edgeManager.findInheritanceHierarchy(args.class_name, args.project);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-    };
+    return await findInheritanceHierarchy(this.edgeManager, args as FindInheritanceHierarchyParams);
   }
 
   protected async handleCalculateCKMetrics(args: any) {
-    const result = await this.metricsManager.calculateCKMetrics(args.class_id);
-    
-    if (this.detailLevel === 'detailed') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `CK Metrics for ${result.className}:
-
-• Weighted Methods per Class (WMC): ${result.wmc}
-• Depth of Inheritance Tree (DIT): ${result.dit}
-• Number of Children (NOC): ${result.noc}
-• Coupling Between Objects (CBO): ${result.cbo}
-• Response for Class (RFC): ${result.rfc}
-• Lack of Cohesion in Methods (LCOM): ${result.lcom}
-
-Quality Assessment:
-${this.assessCKMetrics(result)}
-
-Raw Data:
-${JSON.stringify(result, null, 2)}`
-        }]
-      };
-    } else {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `CK Metrics for ${result.className}:
-• WMC: ${result.wmc}, DIT: ${result.dit}, NOC: ${result.noc}
-• CBO: ${result.cbo}, RFC: ${result.rfc}, LCOM: ${result.lcom}
-
-${JSON.stringify(result, null, 2)}`
-        }]
-      };
-    }
+    return await calculateCKMetrics(this.metricsManager, args as CalculateCKMetricsParams, this.detailLevel);
   }
 
   protected async handleCalculatePackageMetrics(args: any) {
-    const result = await this.metricsManager.calculatePackageMetrics(args.package_name);
-    
-    if (this.detailLevel === 'detailed') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Package Metrics for ${result.packageName}:
-
-• Afferent Coupling (Ca): ${result.ca}
-• Efferent Coupling (Ce): ${result.ce}
-• Instability (I): ${result.instability.toFixed(3)}
-• Abstractness (A): ${result.abstractness.toFixed(3)}
-• Distance from Main Sequence (D): ${result.distance.toFixed(3)}
-
-Quality Assessment:
-${this.assessPackageMetrics(result)}
-
-Raw Data:
-${JSON.stringify(result, null, 2)}`
-        }]
-      };
-    } else {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Package Metrics for ${result.packageName}:
-• Ca: ${result.ca}, Ce: ${result.ce}, I: ${result.instability.toFixed(3)}
-• A: ${result.abstractness.toFixed(3)}, D: ${result.distance.toFixed(3)}
-
-${JSON.stringify(result, null, 2)}`
-        }]
-      };
-    }
+    return await calculatePackageMetrics(this.metricsManager, args as CalculatePackageMetricsParams, this.detailLevel);
   }
 
   protected async handleFindArchitecturalIssues(args: any) {
-    const result = await this.metricsManager.findArchitecturalIssues();
-    return {
-      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
-    };
+    return await findArchitecturalIssues(this.metricsManager);
   }
 
   protected async handleGetProjectSummary(args: any) {
-    const result = await this.metricsManager.calculateProjectSummary();
-    
-    if (this.detailLevel === 'detailed') {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `📊 PROJECT SUMMARY
-
-🏗️ STRUCTURE
-  Classes: ${result.totalClasses}
-  Methods: ${result.totalMethods}
-  Packages: ${result.totalPackages}
-
-📈 QUALITY SCORE: ${this.calculateQualityScore(result)}
-
-📊 AVERAGE METRICS
-  CBO (Coupling): ${result.averageMetrics.avgCBO.toFixed(2)}
-  RFC (Response): ${result.averageMetrics.avgRFC.toFixed(2)}
-  DIT (Inheritance): ${result.averageMetrics.avgDIT.toFixed(2)}
-  LCOM (Cohesion): ${(result.averageMetrics as any).avgLCOM?.toFixed(2) || 'N/A'}
-
-⚠️ ISSUES DETECTED: ${result.issueCount}
-
-🎯 RECOMMENDATIONS
-${result.issueCount > 0 ? 
-  '• Review architectural issues using find_architectural_issues\n• Focus on reducing coupling and improving cohesion\n• Consider refactoring large classes and deep hierarchies' :
-  '• Code structure appears healthy\n• Continue monitoring as codebase grows\n• Consider adding more comprehensive tests'
-}
-
-Raw Data:
-${JSON.stringify(result, null, 2)}`
-        }]
-      };
-    } else {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `Project Summary: ${result.totalClasses} classes, ${result.totalMethods} methods, ${result.issueCount} issues
-
-${JSON.stringify(result, null, 2)}`
-        }]
-      };
-    }
+    return await getProjectSummary(this.metricsManager, args as GetProjectSummaryParams, this.detailLevel);
   }
 
   protected async handleAddFile(args: any) {
-    try {
-      const filePath = args.file_path;
-      const clearExisting = args.clear_existing || false;
-
-      // Check if file exists
-      const fs = await import('fs');
-      if (!fs.existsSync(filePath)) {
-        return {
-          content: [{ type: 'text', text: `❌ File not found: ${filePath}` }]
-        };
-      }
-
-      // Clear existing entities from this file if requested
-      if (clearExisting) {
-        const query = `
-          MATCH (n {source_file: $filePath, project: $project})
-          DETACH DELETE n
-        `;
-        await this.client.runQuery(query, { filePath, project: args.project });
-      }
-
-      // Read file content
-      const content = await fs.promises.readFile(filePath, 'utf-8');
-
-      // Find appropriate parser
-      const parser = this.findParser(filePath);
-      if (!parser) {
-        const supportedExtensions = ['.ts', '.tsx', '.js', '.jsx', '.java', '.py'];
-        return {
-          content: [{ 
-            type: 'text', 
-            text: `❌ Unsupported file type: ${filePath}\nSupported extensions: ${supportedExtensions.join(', ')}` 
-          }]
-        };
-      }
-
-      // Parse the file
-      const parseResult = await parser.parseFile(filePath, content, args.project);
-
-      // Store entities and relationships
-      await this.storeParseResult(parseResult, args.project);
-
-      const summary = `✅ File parsed successfully: ${filePath}
-
-📊 Results:
-  • Entities found: ${parseResult.entities.length}
-  • Relationships found: ${parseResult.relationships.length}
-  • Errors: ${parseResult.errors.length}
-
-🏗️ Entity Types:
-${this.summarizeEntityTypes(parseResult.entities)}
-
-${parseResult.errors.length > 0 ? `
-⚠️ Parse Errors:
-${parseResult.errors.slice(0, 5).map((e: any) => `  • Line ${e.line || '?'}: ${e.message}`).join('\n')}
-${parseResult.errors.length > 5 ? `  ... and ${parseResult.errors.length - 5} more` : ''}
-` : ''}`;
-
-      return {
-        content: [{ type: 'text', text: summary }]
-      };
-
-    } catch (error) {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `❌ Failed to parse file: ${error instanceof Error ? error.message : String(error)}` 
-        }]
-      };
-    }
+    return await addFile(this.codebaseScanner, this.nodeManager, this.edgeManager, this.client, args as AddFileParams);
   }
 
   protected async handleScanDir(args: any) {
-    try {
-      const directoryPath = args.directory_path;
-      const languages = args.languages?.length > 0 ? args.languages : undefined;
-      const excludePaths = args.exclude_paths || [];
-      const includeTests = args.include_tests || false;
-      const clearExisting = args.clear_existing || false;
-      const maxDepth = args.max_depth || 10;
-
-      // Check if directory exists
-      const fs = await import('fs');
-      if (!fs.existsSync(directoryPath)) {
-        return {
-          content: [{ type: 'text', text: `❌ Directory not found: ${directoryPath}` }]
-        };
-      }
-
-      // Validate project structure first
-      const validation = await this.codebaseScanner.validateProjectStructure(directoryPath);
-      
-      if (!validation.isValid) {
-        return {
-          content: [{ 
-            type: 'text', 
-            text: `❌ Invalid project structure:\n${validation.suggestions.join('\n')}` 
-          }]
-        };
-      }
-
-      // Prepare scan configuration
-      const scanConfig: ScanConfig = {
-        projectPath: directoryPath,
-        projectId: args.project,
-        projectName: args.project,
-        languages: languages || validation.detectedLanguages,
-        excludePaths,
-        includeTests,
-        maxDepth,
-        outputProgress: false // We'll handle our own progress reporting
-      };
-
-      // Clear existing project data if requested
-      if (clearExisting) {
-        await this.codebaseScanner.clearGraph(args.project);
-      }
-
-      // Perform the scan
-      console.log(`🔍 Scanning directory: ${directoryPath}`);
-      const scanResult = await this.codebaseScanner.scanProject(scanConfig);
-
-      // Generate detailed report
-      const report = await this.codebaseScanner.generateScanReport(scanResult);
-
-      return {
-        content: [{ type: 'text', text: report }]
-      };
-
-    } catch (error) {
-      return {
-        content: [{ 
-          type: 'text', 
-          text: `❌ Failed to scan directory: ${error instanceof Error ? error.message : String(error)}` 
-        }]
-      };
-    }
+    return await scanDir(this.codebaseScanner, args as ScanDirParams);
   }
 
-  // Helper methods
-  protected findParser(filePath: string): any {
-    const parsers = [
-      this.codebaseScanner['parsers'].get('typescript'),
-      this.codebaseScanner['parsers'].get('java'),
-      this.codebaseScanner['parsers'].get('python')
-    ];
-
-    for (const parser of parsers) {
-      if (parser && parser.canParse(filePath)) {
-        return parser;
-      }
-    }
-    return null;
-  }
-
-  protected async storeParseResult(parseResult: any, project: string): Promise<void> {
-    // Store entities - they already have project_id from the parsers
-    for (const entity of parseResult.entities) {
-      try {
-        await this.nodeManager.addNode(entity);
-      } catch (error) {
-        // Skip duplicates
-        if (!(error instanceof Error) || !error.message.includes('already exists')) {
-          console.warn(`Failed to store entity ${entity.id}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-    }
-
-    // Store relationships - they already have project_id from the parsers
-    for (const relationship of parseResult.relationships) {
-      try {
-        await this.edgeManager.addEdge(relationship);
-      } catch (error) {
-        // Skip duplicates
-        if (!(error instanceof Error) || !error.message.includes('already exists')) {
-          console.warn(`Failed to store relationship ${relationship.id}: ${error instanceof Error ? error.message : String(error)}`);
-        }
-      }
-    }
-  }
-
-  protected summarizeEntityTypes(entities: any[]): string {
-    const typeCounts = entities.reduce((acc, entity) => {
-      acc[entity.type] = (acc[entity.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return Object.entries(typeCounts)
-      .sort(([,a], [,b]) => (b as number) - (a as number))
-      .map(([type, count]) => `  • ${type}: ${count}`)
-      .join('\n') || '  No entities found';
-  }
-
-  // Quality assessment methods
-  protected assessCKMetrics(result: any): string {
-    const issues: string[] = [];
-    
-    if (result.wmc > 15) issues.push("High WMC: Consider breaking down this class");
-    if (result.dit > 4) issues.push("Deep inheritance: Consider composition over inheritance");
-    if (result.noc > 7) issues.push("Many children: Consider interface segregation");
-    if (result.cbo > 10) issues.push("High coupling: Reduce dependencies");
-    if (result.rfc > 30) issues.push("High RFC: Class is doing too much");
-    if (result.lcom > 0.7) issues.push("Low cohesion: Methods don't work together well");
-    
-    if (issues.length === 0) {
-      return "✅ Class metrics appear healthy";
-    }
-    
-    return "⚠️ Issues detected:\n" + issues.map(issue => `• ${issue}`).join('\n');
-  }
-
-  protected assessPackageMetrics(result: any): string {
-    const issues: string[] = [];
-    
-    if (result.instability > 0.7 && result.abstractness < 0.3) {
-      issues.push("Zone of Pain: Stable and concrete - hard to extend");
-    }
-    if (result.instability < 0.3 && result.abstractness > 0.7) {
-      issues.push("Zone of Uselessness: Abstract and stable but not used");
-    }
-    if (result.distance > 0.7) {
-      issues.push("Poorly balanced abstraction vs instability");
-    }
-    if (result.ce === 0 && result.ca === 0) {
-      issues.push("Isolated package - no dependencies");
-    }
-    
-    if (issues.length === 0) {
-      return "✅ Package design appears well-balanced";
-    }
-    
-    return "⚠️ Issues detected:\n" + issues.map(issue => `• ${issue}`).join('\n');
-  }
-
-  protected calculateQualityScore(summary: any): string {
-    let score = 100;
-    
-    // Penalize high averages
-    if (summary.averageMetrics.avgCBO > 10) score -= 20;
-    if (summary.averageMetrics.avgRFC > 30) score -= 15;
-    if (summary.averageMetrics.avgDIT > 4) score -= 10;
-    
-    // Penalize issues
-    score -= summary.issueCount * 5;
-    
-    score = Math.max(0, score);
-    
-    if (score >= 90) return `${score}/100 (Excellent)`;
-    if (score >= 75) return `${score}/100 (Good)`;
-    if (score >= 60) return `${score}/100 (Fair)`;
-    if (score >= 40) return `${score}/100 (Poor)`;
-    return `${score}/100 (Critical)`;
-  }
 
   // Prompt content generators
   protected getDetailedAnalysisPrompt(projectType: string): string {
