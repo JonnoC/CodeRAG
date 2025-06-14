@@ -1,6 +1,6 @@
 // Simple tests for scanner functionality to boost coverage
-import { CodebaseScanner } from '../src/scanner/codebase-scanner.js';
-import { Neo4jClient } from '../src/graph/neo4j-client.js';
+import { CodebaseScanner } from '../../src/scanner/codebase-scanner';
+import { Neo4jClient } from '../../src/graph/neo4j-client';
 
 // Mock neo4j-driver and dependencies
 jest.mock('neo4j-driver');

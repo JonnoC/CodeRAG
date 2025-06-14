@@ -3,7 +3,7 @@ import { EntityFactory } from '../../base/EntityFactory.js';
 import { RelationshipBuilder } from '../../base/RelationshipBuilder.js';
 import { JavaContentExtractor } from '../../extractors/java/JavaContentExtractor.js';
 import { JavaDocExtractor } from '../../extractors/java/JavaDocExtractor.js';
-import { JavaFrameworkDetector } from '../../framework-detection/JavaFrameworkDetector.js';
+import { JavaFrameworkDetector } from '../../framework-detection/java/JavaFrameworkDetector.js';
 
 export class JavaFieldParser {
   private contentExtractor = new JavaContentExtractor();

@@ -3,7 +3,7 @@ import { EntityFactory } from '../../base/EntityFactory.js';
 import { RelationshipBuilder } from '../../base/RelationshipBuilder.js';
 import { TypeScriptContentExtractor } from '../../extractors/typescript/TypeScriptContentExtractor.js';
 import { JsDocExtractor } from '../../extractors/typescript/JsDocExtractor.js';
-import { TypeScriptFrameworkDetector } from '../../framework-detection/TypeScriptFrameworkDetector.js';
+import { TypeScriptFrameworkDetector } from '../../framework-detection/typescript/TypeScriptFrameworkDetector.js';
 
 export class TypeScriptClassParser {
   private contentExtractor = new TypeScriptContentExtractor();
