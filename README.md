@@ -8,6 +8,8 @@ CodeRAG is a revolutionary tool that builds a comprehensive graph database of yo
 
 🔍 **Smart Code Scanning** - Automatically analyzes your codebase and builds a detailed graph of all classes, methods, interfaces, and their relationships
 
+🧠 **Semantic Code Search** - Find code by functionality using natural language queries like "functions that validate email addresses"
+
 📊 **Quality Insights** - Calculates industry-standard metrics (CK metrics, package coupling, architectural patterns) to identify code smells and improvement opportunities  
 
 🤖 **AI Integration** - Connects seamlessly with AI coding assistants through the Model Context Protocol (MCP), giving them deep understanding of your code structure
@@ -50,7 +52,7 @@ Get up and running in 5 minutes:
 3. **Configure Environment**
    ```bash
    cp .env.example .env
-   # Edit .env with your Neo4J credentials
+   # Edit .env with your Neo4J credentials and OpenAI API key for semantic search
    ```
 
 4. **Scan Your First Project**
@@ -78,6 +80,7 @@ Get up and running in 5 minutes:
 ## Key Features
 
 - 🔧 **Automated Scanning** - Parses TypeScript, JavaScript, Java, and Python projects
+- 🧠 **Semantic Search** - Natural language code discovery powered by OpenAI embeddings
 - 🎯 **Smart Analysis** - Identifies classes, methods, interfaces, inheritance, and dependencies  
 - 📈 **Quality Metrics** - CK metrics, package coupling, architectural issue detection
 - 🤖 **AI-Ready** - Integrates with Claude Code, Windsurf, Cursor, VS Code Continue, and more
@@ -85,6 +88,12 @@ Get up and running in 5 minutes:
 - 🔄 **Dual Modes** - STDIO for direct AI integration, HTTP for web-based tools
 
 ## Example Use Cases
+
+### 🧠 **Semantic Code Search**
+*"Find functions that validate email addresses"*
+```
+Use semantic_search with query="functions that validate email addresses"
+```
 
 ### 🕵️ **Code Investigation**
 *"Show me all the classes that call the `authenticate` method"*
@@ -104,16 +113,16 @@ Use find_architectural_issues to detect circular dependencies, god classes, and 
 Use calculate_ck_metrics for class_id="com.example.UserService"
 ```
 
-### 🔍 **Dependency Analysis**
-*"What does this class depend on and what depends on it?"*
+### 🔄 **Similar Code Discovery**
+*"Find code similar to this authentication function"*
 ```
-Use the find_dependencies prompt for interactive guidance
+Use get_similar_code with node_id="auth_function_id"
 ```
 
 ## Common Commands
 
 ```bash
-# Quick project scan
+# Quick project scan (includes semantic embedding generation if enabled)
 npm run scan /path/to/project
 
 # Start for AI assistant integration  
@@ -121,6 +130,12 @@ npm start
 
 # Run quality analysis
 npm run scan /path/to/project -- --analyze
+
+# Initialize semantic search (setup vector indexes)
+node build/index.js --tool initialize_semantic_search
+
+# Update embeddings for existing projects
+node build/index.js --tool update_embeddings --project-id my-project
 
 # Start web server for HTTP access
 npm start -- --sse --port 3000

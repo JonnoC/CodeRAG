@@ -71,3 +71,35 @@ export interface QueryResult {
   edges?: CodeEdge[];
   records?: any[];
 }
+
+// Semantic Search Types
+export interface SemanticEmbedding {
+  vector: number[];
+  model: string;
+  version: string;
+  created_at: Date;
+}
+
+export interface SemanticSearchConfig {
+  provider: 'openai' | 'local' | 'disabled';
+  model: string;
+  api_key?: string;
+  dimensions: number;
+  max_tokens: number;
+  batch_size: number;
+  similarity_threshold: number;
+}
+
+export interface SemanticSearchResult {
+  node: CodeNode;
+  similarity_score: number;
+  matched_content: string;
+}
+
+export interface SemanticSearchParams {
+  query: string;
+  project_id?: string;
+  node_types?: CodeNode['type'][];
+  limit?: number;
+  similarity_threshold?: number;
+}

@@ -4,6 +4,8 @@ import { glob } from 'glob';
 import { Neo4jClient } from '../graph/neo4j-client.js';
 import { NodeManager } from '../graph/node-manager.js';
 import { EdgeManager } from '../graph/edge-manager.js';
+import { EmbeddingService } from '../services/embedding-service.js';
+import { SemanticSearchManager } from '../services/semantic-search-manager.js';
 import { TypeScriptParser } from './parsers/typescript-parser.js';
 import { JavaParser } from './parsers/java-parser.js';
 import { PythonParser } from './parsers/python-parser.js';
@@ -20,10 +22,14 @@ export class CodebaseScanner {
   private parsers: Map<Language, LanguageParser>;
   private nodeManager: NodeManager;
   private edgeManager: EdgeManager;
+  private embeddingService: EmbeddingService;
+  private semanticSearchManager: SemanticSearchManager;
 
   constructor(private client: Neo4jClient) {
     this.nodeManager = new NodeManager(client);
     this.edgeManager = new EdgeManager(client);
+    this.embeddingService = new EmbeddingService();
+    this.semanticSearchManager = new SemanticSearchManager(client, this.embeddingService);
     
     // Initialize parsers
     this.parsers = new Map();
@@ -421,6 +427,32 @@ export class CodebaseScanner {
         }
       }));
     }
+
+    // Generate embeddings if semantic search is enabled
+    if (this.embeddingService.isEnabled()) {
+      console.log(`🧠 Generating semantic embeddings for ${deduplicatedEntities.length} entities...`);
+      try {
+        const embeddingResult = await this.generateEmbeddingsForEntities(deduplicatedEntities);
+        console.log(`✅ Generated embeddings for ${embeddingResult.successful} entities (${embeddingResult.failed} failed)`);
+        
+        if (embeddingResult.failed > 0) {
+          errors.push({
+            type: 'embedding_generation_error',
+            message: `Failed to generate embeddings for ${embeddingResult.failed} entities`,
+            severity: 'warning'
+          });
+        }
+      } catch (error) {
+        console.warn(`⚠️ Failed to generate embeddings: ${error instanceof Error ? error.message : String(error)}`);
+        errors.push({
+          type: 'embedding_generation_error',
+          message: error instanceof Error ? error.message : String(error),
+          severity: 'warning'
+        });
+      }
+    } else {
+      console.log(`🧠 Semantic search disabled, skipping embedding generation`);
+    }
     
     return errors;
   }
@@ -491,5 +523,61 @@ ${errors.length > 10 ? `  ... and ${errors.length - 10} more` : ''}
 `;
 
     return report;
+  }
+
+  private async generateEmbeddingsForEntities(entities: ParsedEntity[]): Promise<{ successful: number; failed: number }> {
+    let successful = 0;
+    let failed = 0;
+
+    // Filter entities that would benefit from embeddings
+    const relevantEntities = entities.filter(entity => 
+      ['class', 'interface', 'method', 'function', 'enum'].includes(entity.type) &&
+      (entity.description || entity.name || entity.qualified_name)
+    );
+
+    if (relevantEntities.length === 0) {
+      return { successful: 0, failed: 0 };
+    }
+
+    // Process in batches to avoid overwhelming the API
+    const batchSize = 50;
+    for (let i = 0; i < relevantEntities.length; i += batchSize) {
+      const batch = relevantEntities.slice(i, i + batchSize);
+      
+      try {
+        // Extract semantic content for the batch
+        const contents = batch.map(entity => this.embeddingService.extractSemanticContent(entity));
+        
+        // Generate embeddings
+        const embeddings = await this.embeddingService.generateEmbeddings(contents);
+        
+        // Store embeddings
+        for (let j = 0; j < batch.length; j++) {
+          const entity = batch[j];
+          const embedding = embeddings[j];
+          
+          if (embedding) {
+            try {
+              await this.semanticSearchManager.addEmbeddingToNode(
+                entity.id, 
+                entity.project_id, 
+                embedding
+              );
+              successful++;
+            } catch (error) {
+              console.warn(`Failed to store embedding for entity ${entity.id}:`, error);
+              failed++;
+            }
+          } else {
+            failed++;
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to process embedding batch starting at index ${i}:`, error);
+        failed += batch.length;
+      }
+    }
+
+    return { successful, failed };
   }
 }

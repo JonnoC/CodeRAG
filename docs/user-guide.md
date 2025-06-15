@@ -25,7 +25,8 @@ This user guide is organized into focused sections:
 
 ### 🔍 Core Usage
 - **[Scanner Usage](scanner-usage.md)** - Scan your codebase and populate the graph database
-- **[Available Tools](available-tools.md)** - Complete reference of all 19 CodeRAG tools
+- **[Available Tools](available-tools.md)** - Complete reference of all 23 CodeRAG tools
+- **[Semantic Search](semantic-search.md)** - Natural language code discovery with AI embeddings
 - **[MCP Prompts Guide](mcp-prompts.md)** - Guided workflows for effective code analysis
 
 ### 📊 Advanced Features  
@@ -40,6 +41,7 @@ This user guide is organized into focused sections:
 CodeRAG transforms your codebase into a searchable graph database, enabling:
 
 - **🔍 Advanced Code Analysis** - Find complex relationships and dependencies
+- **🧠 Semantic Code Search** - Find code by functionality using natural language queries
 - **📊 Quality Metrics** - Calculate industry-standard metrics (CK metrics, package coupling)  
 - **🏗️ Architecture Insights** - Detect design patterns, architectural issues, and violations
 - **🤖 AI-Powered Exploration** - Use natural language to query your codebase structure
@@ -103,6 +105,23 @@ CodeRAG transforms your codebase into a searchable graph database, enabling:
    Use calculate_package_metrics for com.myapp.service
    ```
 
+### Semantic Code Discovery
+
+1. **Search by functionality:**
+   ```
+   Use semantic_search with query="functions that validate user input"
+   ```
+
+2. **Find similar code:**
+   ```
+   Use get_similar_code for node_id="UserValidator.validateEmail"
+   ```
+
+3. **Update embeddings after changes:**
+   ```
+   Use update_embeddings for project_id="my-project"
+   ```
+
 ## Quick Reference Card
 
 ### Essential Commands
@@ -122,9 +141,11 @@ npm start -- --sse --port 3000
 
 ### Key MCP Tools
 - `scan_dir` - Scan codebase
+- `semantic_search` - Natural language code search
 - `get_project_summary` - Overview
 - `find_architectural_issues` - Find problems
 - `calculate_ck_metrics` - Class quality
+- `get_similar_code` - Find similar code entities
 - `get_inheritance_hierarchy` - Class relationships
 
 ### MCP Prompts

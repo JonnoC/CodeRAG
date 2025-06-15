@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { Neo4jConfig, ProjectConfig } from './types.js';
+import { Neo4jConfig, ProjectConfig, SemanticSearchConfig } from './types.js';
 
 dotenv.config();
 
@@ -70,4 +70,24 @@ export class ProjectContextManager {
       entityId: entityParts.join(':')
     };
   }
+}
+
+export function getSemanticSearchConfig(): SemanticSearchConfig {
+  const provider = (process.env.SEMANTIC_SEARCH_PROVIDER as 'openai' | 'local' | 'disabled') || 'disabled';
+  const model = process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
+  const api_key = process.env.OPENAI_API_KEY;
+  
+  // Default dimensions based on model
+  const defaultDimensions = model === 'text-embedding-3-small' ? 1536 : 
+                           model === 'text-embedding-3-large' ? 3072 : 1536;
+
+  return {
+    provider,
+    model,
+    api_key,
+    dimensions: parseInt(process.env.EMBEDDING_DIMENSIONS || defaultDimensions.toString(), 10),
+    max_tokens: parseInt(process.env.EMBEDDING_MAX_TOKENS || '8000', 10),
+    batch_size: parseInt(process.env.EMBEDDING_BATCH_SIZE || '100', 10),
+    similarity_threshold: parseFloat(process.env.SIMILARITY_THRESHOLD || '0.7')
+  };
 }

@@ -1,6 +1,6 @@
 # Available Tools Reference
 
-CodeRAG provides 19 powerful tools for code analysis:
+CodeRAG provides 23 powerful tools for code analysis:
 
 ## Core CRUD Operations
 
@@ -124,6 +124,71 @@ CodeRAG provides 19 powerful tools for code analysis:
 - `relationship_type`: Optional relationship filter
 - `limit`: Maximum results (default: 100)
 - `project_id`: Project identifier (optional)
+
+## Semantic Search
+
+### `semantic_search`
+**Description:** Search for code using natural language queries to find functionality by meaning
+
+**Parameters:**
+- `query`: Natural language description of functionality to search for
+- `project_id`: Optional project identifier to scope search
+- `node_types`: Optional array of node types to filter (class, method, function, etc.)
+- `limit`: Maximum results (default: 10)
+- `similarity_threshold`: Minimum similarity score 0.0-1.0 (default: 0.7)
+- `include_graph_context`: Include related entities in results (default: false)
+- `max_hops`: Maximum relationship hops for context (default: 2)
+
+**Example:**
+```json
+{
+  "query": "functions that validate email addresses",
+  "project_id": "my-web-app",
+  "node_types": ["function", "method"],
+  "limit": 5,
+  "similarity_threshold": 0.8,
+  "include_graph_context": true
+}
+```
+
+### `get_similar_code`
+**Description:** Find code entities semantically similar to a specific node
+
+**Parameters:**
+- `node_id`: ID of the reference code entity
+- `project_id`: Project containing the reference node
+- `limit`: Maximum results (default: 5)
+
+**Example:**
+```json
+{
+  "node_id": "UserValidator.validateEmail",
+  "project_id": "my-web-app",
+  "limit": 10
+}
+```
+
+### `update_embeddings`
+**Description:** Generate or refresh semantic embeddings for code entities
+
+**Parameters:**
+- `project_id`: Optional project identifier to scope update
+- `node_types`: Optional array of node types to update
+
+**Example:**
+```json
+{
+  "project_id": "my-web-app",
+  "node_types": ["class", "method", "function"]
+}
+```
+
+### `initialize_semantic_search`
+**Description:** Initialize semantic search infrastructure and vector indexes
+
+**Parameters:** None
+
+**Usage:** Run once per database to set up vector search capabilities
 
 ## Relationship Analysis
 
@@ -378,6 +443,25 @@ get_project_summary -> project_id: "project-b"
 
 # 3. Cross-project analysis
 search_nodes -> search_term: "Controller"  # Searches all projects
+```
+
+### 5. Semantic Code Discovery
+
+```bash
+# 1. Initialize semantic search (one-time setup)
+initialize_semantic_search
+
+# 2. Generate embeddings for existing project
+update_embeddings -> project_id: "my-project"
+
+# 3. Search by functionality
+semantic_search -> query: "functions that validate email addresses"
+
+# 4. Find similar code
+get_similar_code -> node_id: "UserValidator.validateEmail", project_id: "my-project"
+
+# 5. Search with context
+semantic_search -> query: "database connection utilities", include_graph_context: true
 ```
 
 ## Error Handling

@@ -5,7 +5,7 @@ This guide covers the prerequisites, installation, and configuration of CodeRAG.
 ## Prerequisites
 
 - **Node.js**: Version 18 or higher
-- **Neo4J Database**: Version 4.4 or higher
+- **Neo4J Database**: Version 4.4 or higher (5.11+ recommended for semantic search)
 - **Git**: For cloning the repository
 
 ## Installation
@@ -29,14 +29,57 @@ npm run build
 Create a `.env` file in the project root:
 
 ```env
+# Neo4j Database Configuration
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your_neo4j_password
+
+# Project Configuration
+PROJECT_ISOLATION_STRATEGY=shared_db
+DEFAULT_PROJECT_ID=default
+CROSS_PROJECT_ANALYSIS=false
+MAX_PROJECTS_SHARED_DB=100
+
+# Semantic Search Configuration (Optional)
+# Options: openai, local, disabled
+SEMANTIC_SEARCH_PROVIDER=disabled
+
+# OpenAI Configuration (required if SEMANTIC_SEARCH_PROVIDER=openai)
+# OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Embedding Model Configuration
+# EMBEDDING_MODEL=text-embedding-3-small
+# EMBEDDING_MAX_TOKENS=8000
+# EMBEDDING_BATCH_SIZE=100
+# SIMILARITY_THRESHOLD=0.7
 
 # Optional: Server configuration
 SERVER_PORT=3000
 LOG_LEVEL=info
 ```
+
+### Semantic Search Setup (Optional)
+
+To enable semantic code search with natural language queries:
+
+1. **Get an OpenAI API key** from [OpenAI Platform](https://platform.openai.com/api-keys)
+
+2. **Update your `.env` file:**
+   ```env
+   SEMANTIC_SEARCH_PROVIDER=openai
+   OPENAI_API_KEY=sk-your-openai-api-key-here
+   EMBEDDING_MODEL=text-embedding-3-small
+   ```
+
+3. **Ensure Neo4j 5.11+** for vector index support (required for semantic search)
+
+4. **Initialize semantic search** after first project scan:
+   ```bash
+   npm run build
+   node build/index.js --tool initialize_semantic_search
+   ```
+
+For detailed semantic search configuration, see the [Semantic Search Guide](semantic-search.md).
 
 ## Neo4J Database Setup
 

@@ -12,6 +12,8 @@ import { NodeManager } from '../graph/node-manager.js';
 import { EdgeManager } from '../graph/edge-manager.js';
 import { MetricsManager } from '../analysis/metrics-manager.js';
 import { CodebaseScanner } from '../scanner/codebase-scanner.js';
+import { SemanticSearchManager } from '../services/semantic-search-manager.js';
+import { EmbeddingService } from '../services/embedding-service.js';
 import { ScanConfig, Language } from '../scanner/types.js';
 import { CodeNode, CodeEdge } from '../types.js';
 
@@ -45,6 +47,10 @@ import {
   addFile, scanDir,
   type AddFileParams, type ScanDirParams 
 } from './tools/scanner-tools.js';
+import { 
+  semanticSearch, updateEmbeddings, getSimilarCode, initializeSemanticSearch,
+  type SemanticSearchToolParams, type UpdateEmbeddingsParams, type GetSimilarCodeParams 
+} from './tools/semantic-search.js';
 
 export abstract class BaseHandler {
   protected server: Server;
@@ -52,6 +58,8 @@ export abstract class BaseHandler {
   protected edgeManager: EdgeManager;
   protected metricsManager: MetricsManager;
   protected codebaseScanner: CodebaseScanner;
+  protected semanticSearchManager: SemanticSearchManager;
+  protected embeddingService: EmbeddingService;
   protected detailLevel: 'simple' | 'detailed' = 'detailed';
 
   constructor(
@@ -78,6 +86,8 @@ export abstract class BaseHandler {
     this.edgeManager = new EdgeManager(client);
     this.metricsManager = new MetricsManager(client);
     this.codebaseScanner = new CodebaseScanner(client);
+    this.embeddingService = new EmbeddingService();
+    this.semanticSearchManager = new SemanticSearchManager(client, this.embeddingService);
     this.setupToolHandlers();
     this.setupPromptHandlers();
   }
@@ -146,6 +156,14 @@ export abstract class BaseHandler {
             return await this.handleFindUntestableCode(request.params.arguments);
           case 'list_projects':
             return await this.handleListProjects(request.params.arguments);
+          case 'semantic_search':
+            return await this.handleSemanticSearch(request.params.arguments);
+          case 'update_embeddings':
+            return await this.handleUpdateEmbeddings(request.params.arguments);
+          case 'get_similar_code':
+            return await this.handleGetSimilarCode(request.params.arguments);
+          case 'initialize_semantic_search':
+            return await this.handleInitializeSemanticSearch(request.params.arguments);
           default:
             throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
         }
@@ -692,6 +710,114 @@ export abstract class BaseHandler {
           },
           required: []
         }
+      },
+      {
+        name: 'semantic_search',
+        description: 'Search for code using natural language queries to find functionality by meaning rather than syntax',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: { 
+              type: 'string', 
+              description: 'Natural language description of the functionality to search for (e.g., "functions that validate email addresses")' 
+            },
+            project_id: { 
+              type: 'string', 
+              description: 'Optional: Project identifier to scope the search to' 
+            },
+            node_types: {
+              type: 'array',
+              items: {
+                type: 'string',
+                enum: ['class', 'interface', 'enum', 'exception', 'function', 'method', 'field', 'package', 'module']
+              },
+              description: 'Optional: Filter results by node types'
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              default: 10,
+              minimum: 1,
+              maximum: 100
+            },
+            similarity_threshold: {
+              type: 'number',
+              description: 'Minimum similarity score (0.0 to 1.0)',
+              default: 0.7,
+              minimum: 0.0,
+              maximum: 1.0
+            },
+            include_graph_context: {
+              type: 'boolean',
+              description: 'Include related code entities in results for better context',
+              default: false
+            },
+            max_hops: {
+              type: 'number',
+              description: 'Maximum relationship hops for graph context (when include_graph_context is true)',
+              default: 2,
+              minimum: 1,
+              maximum: 3
+            }
+          },
+          required: ['query']
+        }
+      },
+      {
+        name: 'update_embeddings',
+        description: 'Generate or update semantic embeddings for code entities to enable semantic search',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            project_id: { 
+              type: 'string', 
+              description: 'Optional: Project identifier to scope the embedding update to' 
+            },
+            node_types: {
+              type: 'array',
+              items: {
+                type: 'string',
+                enum: ['class', 'interface', 'enum', 'exception', 'function', 'method', 'field', 'package', 'module']
+              },
+              description: 'Optional: Filter which node types to update embeddings for'
+            }
+          },
+          required: []
+        }
+      },
+      {
+        name: 'get_similar_code',
+        description: 'Find code entities that are semantically similar to a specific node',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            node_id: { 
+              type: 'string', 
+              description: 'ID of the code entity to find similar items for' 
+            },
+            project_id: { 
+              type: 'string', 
+              description: 'Project identifier containing the node' 
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of similar items to return',
+              default: 5,
+              minimum: 1,
+              maximum: 50
+            }
+          },
+          required: ['node_id', 'project_id']
+        }
+      },
+      {
+        name: 'initialize_semantic_search',
+        description: 'Initialize semantic search infrastructure including vector indexes',
+        inputSchema: {
+          type: 'object',
+          properties: {},
+          required: []
+        }
       }
     ];
   }
@@ -1056,6 +1182,37 @@ What aspect of inheritance would you like to explore first?`;
 
   protected async handleListProjects(args: any) {
     const result = await listProjects(this.client, args);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  protected async handleSemanticSearch(args: any) {
+    const params: SemanticSearchToolParams = args;
+    const result = await semanticSearch(this.semanticSearchManager, params);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  protected async handleUpdateEmbeddings(args: any) {
+    const params: UpdateEmbeddingsParams = args;
+    const result = await updateEmbeddings(this.semanticSearchManager, params);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  protected async handleGetSimilarCode(args: any) {
+    const params: GetSimilarCodeParams = args;
+    const result = await getSimilarCode(this.semanticSearchManager, params);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
+    };
+  }
+
+  protected async handleInitializeSemanticSearch(args: any) {
+    const result = await initializeSemanticSearch(this.semanticSearchManager);
     return {
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }]
     };
