@@ -5,7 +5,7 @@ This guide covers the prerequisites, installation, and configuration of CodeRAG.
 ## Prerequisites
 
 - **Node.js**: Version 18 or higher
-- **Neo4J Database**: Version 4.4 or higher (5.11+ recommended for semantic search)
+- **Neo4J Database**: Version 5.11 or higher (required for vector indexes and semantic search)
 - **Git**: For cloning the repository
 
 ## Installation
@@ -92,7 +92,7 @@ CodeRAG requires a running Neo4J instance. Here are several setup options:
 3. Create a new database with:
    - Name: `coderag` (or your preference)
    - Password: Set a secure password
-   - Version: 4.4+ or 5.x
+   - Version: 5.11+
 4. Start the database
 5. Note the connection details (usually `bolt://localhost:7687`)
 

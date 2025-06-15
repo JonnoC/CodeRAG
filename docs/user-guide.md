@@ -8,7 +8,7 @@ For a complete setup guide, see [Installation & Setup](installation-setup.md).
 
 ### Essential Steps
 
-1. **Install Prerequisites**: Node.js 18+, Neo4J 4.4+
+1. **Install Prerequisites**: Node.js 18+, Neo4J 5.11+
 2. **Clone and Build**: `git clone repo && npm install && npm run build`
 3. **Configure Environment**: Create `.env` with Neo4J connection details
 4. **Start Neo4J**: Launch your Neo4J database
