@@ -73,21 +73,63 @@ export class ProjectContextManager {
 }
 
 export function getSemanticSearchConfig(): SemanticSearchConfig {
-  const provider = (process.env.SEMANTIC_SEARCH_PROVIDER as 'openai' | 'local' | 'disabled') || 'disabled';
-  const model = process.env.EMBEDDING_MODEL || 'text-embedding-3-small';
+  const provider = (process.env.SEMANTIC_SEARCH_PROVIDER as 'openai' | 'ollama' | 'disabled') || 'disabled';
+  const model = process.env.EMBEDDING_MODEL || getDefaultModel(provider);
   const api_key = process.env.OPENAI_API_KEY;
+  const base_url = process.env.OPENAI_BASE_URL || process.env.OLLAMA_BASE_URL;
   
-  // Default dimensions based on model
-  const defaultDimensions = model === 'text-embedding-3-small' ? 1536 : 
-                           model === 'text-embedding-3-large' ? 3072 : 1536;
+  // Default dimensions based on model and provider
+  const defaultDimensions = getDefaultDimensions(model, provider);
 
   return {
     provider,
     model,
     api_key,
+    base_url,
     dimensions: parseInt(process.env.EMBEDDING_DIMENSIONS || defaultDimensions.toString(), 10),
     max_tokens: parseInt(process.env.EMBEDDING_MAX_TOKENS || '8000', 10),
     batch_size: parseInt(process.env.EMBEDDING_BATCH_SIZE || '100', 10),
     similarity_threshold: parseFloat(process.env.SIMILARITY_THRESHOLD || '0.7')
   };
+}
+
+function getDefaultModel(provider: string): string {
+  switch (provider) {
+    case 'openai':
+      return 'text-embedding-3-small';
+    case 'ollama':
+      return 'nomic-embed-text';
+    default:
+      return 'text-embedding-3-small';
+  }
+}
+
+function getDefaultDimensions(model: string, provider: string): number {
+  // OpenAI models
+  if (provider === 'openai') {
+    switch (model) {
+      case 'text-embedding-3-small':
+        return 1536;
+      case 'text-embedding-3-large':
+        return 3072;
+      case 'text-embedding-ada-002':
+        return 1536;
+      default:
+        return 1536;
+    }
+  }
+  
+  // Ollama models
+  if (provider === 'ollama') {
+    switch (model) {
+      case 'nomic-embed-text':
+        return 768;
+      case 'mxbai-embed-large':
+        return 1024;
+      default:
+        return 768;
+    }
+  }
+  
+  return 1536; // Default fallback
 }

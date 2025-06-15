@@ -19,9 +19,17 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     }
     
     this.config = config;
-    this.client = new OpenAI({
+    
+    // Support custom base URLs for OpenAI-compatible APIs (e.g., LLM Studio)
+    const clientConfig: any = {
       apiKey: config.api_key,
-    });
+    };
+    
+    if (config.base_url) {
+      clientConfig.baseURL = config.base_url;
+    }
+    
+    this.client = new OpenAI(clientConfig);
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
@@ -85,22 +93,59 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   }
 }
 
-export class LocalEmbeddingProvider implements EmbeddingProvider {
+export class OllamaEmbeddingProvider implements EmbeddingProvider {
   private config: SemanticSearchConfig;
+  private baseUrl: string;
 
   constructor(config: SemanticSearchConfig) {
     this.config = config;
+    this.baseUrl = config.base_url || 'http://localhost:11434';
   }
 
   async generateEmbedding(text: string): Promise<number[]> {
-    // Placeholder for local embedding implementation
-    // This would integrate with sentence-transformers or similar
-    throw new Error('Local embedding provider not yet implemented');
+    try {
+      const truncatedText = this.truncateText(text, this.config.max_tokens);
+      
+      const response = await fetch(`${this.baseUrl}/api/embeddings`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: this.config.model,
+          prompt: truncatedText,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.embedding;
+    } catch (error) {
+      throw new Error(`Failed to generate Ollama embedding: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   async generateEmbeddings(texts: string[]): Promise<number[][]> {
-    // Placeholder for local batch embedding implementation
-    throw new Error('Local embedding provider not yet implemented');
+    try {
+      const results: number[][] = [];
+      const batchSize = Math.min(this.config.batch_size, texts.length);
+      
+      // Ollama doesn't support batch embeddings, so we process individually
+      // but in controlled batches to avoid overwhelming the server
+      for (let i = 0; i < texts.length; i += batchSize) {
+        const batch = texts.slice(i, i + batchSize);
+        const batchPromises = batch.map(text => this.generateEmbedding(text));
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults);
+      }
+
+      return results;
+    } catch (error) {
+      throw new Error(`Failed to generate Ollama batch embeddings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   getDimensions(): number {
@@ -110,7 +155,19 @@ export class LocalEmbeddingProvider implements EmbeddingProvider {
   getModel(): string {
     return this.config.model;
   }
+
+  private truncateText(text: string, maxTokens: number): string {
+    // Simple token estimation: ~4 characters per token
+    const estimatedTokens = text.length / 4;
+    if (estimatedTokens <= maxTokens) {
+      return text;
+    }
+    
+    const maxChars = maxTokens * 4;
+    return text.substring(0, maxChars) + '...';
+  }
 }
+
 
 export class EmbeddingService {
   private provider: EmbeddingProvider | null = null;
@@ -132,8 +189,8 @@ export class EmbeddingService {
         case 'openai':
           this.provider = new OpenAIEmbeddingProvider(this.config);
           break;
-        case 'local':
-          this.provider = new LocalEmbeddingProvider(this.config);
+        case 'ollama':
+          this.provider = new OllamaEmbeddingProvider(this.config);
           break;
         default:
           throw new Error(`Unknown embedding provider: ${this.config.provider}`);

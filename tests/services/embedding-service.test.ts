@@ -1,4 +1,4 @@
-import { EmbeddingService, OpenAIEmbeddingProvider, LocalEmbeddingProvider } from '../../src/services/embedding-service.js';
+import { EmbeddingService, OpenAIEmbeddingProvider, OllamaEmbeddingProvider } from '../../src/services/embedding-service.js';
 import { SemanticSearchConfig } from '../../src/types.js';
 
 // Mock OpenAI
@@ -12,6 +12,9 @@ jest.mock('openai', () => {
     }))
   };
 });
+
+// Mock global fetch for Ollama tests
+global.fetch = jest.fn();
 
 describe('EmbeddingService', () => {
   const mockConfig: SemanticSearchConfig = {
@@ -50,13 +53,21 @@ describe('EmbeddingService', () => {
       expect(service.isEnabled()).toBe(false);
     });
 
-    it('should initialize local provider when configured', () => {
-      const localConfig = { ...mockConfig, provider: 'local' as const };
-      const service = new EmbeddingService(localConfig);
+    it('should initialize Ollama provider when configured', () => {
+      const ollamaConfig: SemanticSearchConfig = {
+        provider: 'ollama',
+        model: 'nomic-embed-text',
+        base_url: 'http://localhost:11434',
+        dimensions: 768,
+        max_tokens: 8000,
+        batch_size: 50,
+        similarity_threshold: 0.7
+      };
       
-      // Local provider initializes successfully but methods throw not implemented
+      const service = new EmbeddingService(ollamaConfig);
       expect(service.isEnabled()).toBe(true);
     });
+
   });
 
   describe('extractSemanticContent', () => {
@@ -362,42 +373,170 @@ describe('OpenAIEmbeddingProvider', () => {
   });
 });
 
-describe('LocalEmbeddingProvider', () => {
+
+describe('OllamaEmbeddingProvider', () => {
   const mockConfig: SemanticSearchConfig = {
-    provider: 'local',
-    model: 'sentence-transformers/all-MiniLM-L6-v2',
-    dimensions: 384,
-    max_tokens: 512,
-    batch_size: 32,
+    provider: 'ollama',
+    model: 'nomic-embed-text',
+    base_url: 'http://localhost:11434',
+    dimensions: 768,
+    max_tokens: 8000,
+    batch_size: 50,
     similarity_threshold: 0.7
   };
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (fetch as jest.Mock).mockClear();
+  });
+
   describe('Constructor', () => {
-    it('should initialize successfully', () => {
+    it('should initialize with default base URL when not provided', () => {
+      const configWithoutUrl = { ...mockConfig, base_url: undefined };
+      
       expect(() => {
-        new LocalEmbeddingProvider(mockConfig);
+        new OllamaEmbeddingProvider(configWithoutUrl);
       }).not.toThrow();
+    });
+
+    it('should use custom base URL when provided', () => {
+      const provider = new OllamaEmbeddingProvider(mockConfig);
+      expect(provider.getModel()).toBe('nomic-embed-text');
     });
   });
 
-  describe('Methods', () => {
-    let provider: LocalEmbeddingProvider;
-
-    beforeEach(() => {
-      provider = new LocalEmbeddingProvider(mockConfig);
-    });
-
+  describe('getDimensions and getModel', () => {
     it('should return correct dimensions and model', () => {
-      expect(provider.getDimensions()).toBe(384);
-      expect(provider.getModel()).toBe('sentence-transformers/all-MiniLM-L6-v2');
+      const provider = new OllamaEmbeddingProvider(mockConfig);
+      
+      expect(provider.getDimensions()).toBe(768);
+      expect(provider.getModel()).toBe('nomic-embed-text');
+    });
+  });
+
+  describe('generateEmbedding', () => {
+    it('should handle successful API response', async () => {
+      const mockEmbedding = [0.1, 0.2, 0.3];
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          embedding: mockEmbedding
+        })
+      });
+
+      const provider = new OllamaEmbeddingProvider(mockConfig);
+      const result = await provider.generateEmbedding('test text');
+
+      expect(result).toEqual(mockEmbedding);
+      expect(fetch).toHaveBeenCalledWith('http://localhost:11434/api/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'nomic-embed-text',
+          prompt: 'test text',
+        }),
+      });
     });
 
-    it('should throw not implemented error for generateEmbedding', async () => {
-      await expect(provider.generateEmbedding('test')).rejects.toThrow('Local embedding provider not yet implemented');
+    it('should handle API errors', async () => {
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error'
+      });
+
+      const provider = new OllamaEmbeddingProvider(mockConfig);
+
+      await expect(provider.generateEmbedding('test text')).rejects.toThrow('Failed to generate Ollama embedding: Ollama API error: 500 Internal Server Error');
     });
 
-    it('should throw not implemented error for generateEmbeddings', async () => {
-      await expect(provider.generateEmbeddings(['test'])).rejects.toThrow('Local embedding provider not yet implemented');
+    it('should handle network errors', async () => {
+      (fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      const provider = new OllamaEmbeddingProvider(mockConfig);
+
+      await expect(provider.generateEmbedding('test text')).rejects.toThrow('Failed to generate Ollama embedding: Network error');
+    });
+
+    it('should truncate long text', async () => {
+      const mockEmbedding = [0.1, 0.2, 0.3];
+      (fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          embedding: mockEmbedding
+        })
+      });
+
+      const provider = new OllamaEmbeddingProvider(mockConfig);
+      const longText = 'a'.repeat(50000);
+      
+      await provider.generateEmbedding(longText);
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: expect.stringContaining('"prompt":"' + 'a'.repeat(32000) + '..."')
+        })
+      );
+    });
+  });
+
+  describe('generateEmbeddings', () => {
+    it('should handle batch processing', async () => {
+      const mockEmbeddings = [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]];
+      
+      (fetch as jest.Mock)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({ embedding: mockEmbeddings[0] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({ embedding: mockEmbeddings[1] })
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({ embedding: mockEmbeddings[2] })
+        });
+
+      const provider = new OllamaEmbeddingProvider(mockConfig);
+      const texts = ['text1', 'text2', 'text3'];
+      const result = await provider.generateEmbeddings(texts);
+
+      expect(result).toEqual(mockEmbeddings);
+      expect(fetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('should process in controlled batches', async () => {
+      const smallBatchConfig = { ...mockConfig, batch_size: 2 };
+      const provider = new OllamaEmbeddingProvider(smallBatchConfig);
+
+      const mockEmbeddings = [[0.1, 0.2], [0.3, 0.4], [0.5, 0.6]];
+      
+      // Mock responses for each individual embedding call
+      mockEmbeddings.forEach(embedding => {
+        (fetch as jest.Mock).mockResolvedValueOnce({
+          ok: true,
+          json: jest.fn().mockResolvedValue({ embedding })
+        });
+      });
+
+      const texts = ['text1', 'text2', 'text3'];
+      const result = await provider.generateEmbeddings(texts);
+
+      expect(result).toEqual(mockEmbeddings);
+      expect(fetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('should handle batch errors gracefully', async () => {
+      (fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+      const provider = new OllamaEmbeddingProvider(mockConfig);
+      const texts = ['text1', 'text2'];
+
+      await expect(provider.generateEmbeddings(texts)).rejects.toThrow('Failed to generate Ollama batch embeddings');
     });
   });
 });

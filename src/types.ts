@@ -81,9 +81,10 @@ export interface SemanticEmbedding {
 }
 
 export interface SemanticSearchConfig {
-  provider: 'openai' | 'local' | 'disabled';
+  provider: 'openai' | 'ollama' | 'disabled';
   model: string;
   api_key?: string;
+  base_url?: string;
   dimensions: number;
   max_tokens: number;
   batch_size: number;

@@ -16,26 +16,52 @@ Semantic search transforms your code into high-dimensional vectors that capture 
 ### Prerequisites
 
 - Neo4j 5.11+ (required for vector index support)
-- OpenAI API key (for embedding generation)
+- Embedding provider (see provider-specific setup guides)
 - CodeRAG project already scanned
 
-### Configuration
+### Provider Setup Guides
 
-1. **Add to your `.env` file:**
-   ```bash
-   SEMANTIC_SEARCH_PROVIDER=openai
-   OPENAI_API_KEY=sk-your-openai-api-key-here
-   EMBEDDING_MODEL=text-embedding-3-small
-   SIMILARITY_THRESHOLD=0.7
-   ```
+Choose your preferred embedding provider:
 
-2. **Initialize vector indexes:**
+- **🌐 [OpenAI Setup](semantic-search/openai-setup.md)** - Cloud-based, high quality, requires API key
+- **🔒 [Ollama Setup](semantic-search/ollama-setup.md)** - Local, privacy-focused, free after setup
+- **🏠 [Custom Endpoints](semantic-search/custom-endpoints.md)** - LLM Studio, Azure OpenAI, enterprise deployments
+
+### Quick Configuration Examples
+
+#### OpenAI (Cloud)
+```bash
+SEMANTIC_SEARCH_PROVIDER=openai
+OPENAI_API_KEY=sk-your-openai-api-key-here
+EMBEDDING_MODEL=text-embedding-3-small
+```
+
+#### Ollama (Local)
+```bash
+SEMANTIC_SEARCH_PROVIDER=ollama
+EMBEDDING_MODEL=nomic-embed-text
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+#### LLM Studio (Local with OpenAI API)
+```bash
+SEMANTIC_SEARCH_PROVIDER=openai
+OPENAI_API_KEY=not-needed
+OPENAI_BASE_URL=http://localhost:1234/v1
+EMBEDDING_MODEL=text-embedding-3-small
+```
+
+### Initialize and Generate Embeddings
+
+After configuring your provider:
+
+1. **Initialize vector indexes:**
    ```bash
    npm run build
    node build/index.js --tool initialize_semantic_search
    ```
 
-3. **Generate embeddings for existing code:**
+2. **Generate embeddings for existing code:**
    ```bash
    node build/index.js --tool update_embeddings --project-id your-project
    ```
@@ -44,10 +70,12 @@ Semantic search transforms your code into high-dimensional vectors that capture 
 
 | Variable | Description | Default | Options |
 |----------|-------------|---------|---------|
-| `SEMANTIC_SEARCH_PROVIDER` | Embedding provider | `disabled` | `openai`, `local`, `disabled` |
+| `SEMANTIC_SEARCH_PROVIDER` | Embedding provider | `disabled` | `openai`, `ollama`, `disabled` |
 | `OPENAI_API_KEY` | OpenAI API key | - | Required for OpenAI provider |
-| `EMBEDDING_MODEL` | Model for embeddings | `text-embedding-3-small` | `text-embedding-3-small`, `text-embedding-3-large`, `text-embedding-ada-002` |
-| `EMBEDDING_DIMENSIONS` | Vector dimensions | Auto-detected | 1536 (small), 3072 (large) |
+| `OPENAI_BASE_URL` | Custom OpenAI endpoint | - | For LLM Studio, Azure OpenAI, etc. |
+| `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` | For Ollama provider |
+| `EMBEDDING_MODEL` | Model for embeddings | Auto-detected | See provider-specific guides |
+| `EMBEDDING_DIMENSIONS` | Vector dimensions | Auto-detected | Provider and model dependent |
 | `EMBEDDING_MAX_TOKENS` | Max tokens per text | 8000 | Any positive integer |
 | `EMBEDDING_BATCH_SIZE` | Batch processing size | 100 | 1-1000 |
 | `SIMILARITY_THRESHOLD` | Minimum similarity score | 0.7 | 0.0-1.0 |
