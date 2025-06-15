@@ -15,8 +15,11 @@ import {
   LanguageParser, 
   ParsedEntity, 
   ParsedRelationship,
-  Language 
+  Language,
+  ProjectDetectionResult 
 } from './types.js';
+import { ProjectLanguageDetector } from './detection/language-detector.js';
+import { ProjectBuildFileDetector } from './detection/build-file-detector.js';
 
 export class CodebaseScanner {
   private parsers: Map<Language, LanguageParser>;
@@ -24,12 +27,16 @@ export class CodebaseScanner {
   private edgeManager: EdgeManager;
   private embeddingService: EmbeddingService;
   private semanticSearchManager: SemanticSearchManager;
+  private languageDetector: ProjectLanguageDetector;
+  private buildFileDetector: ProjectBuildFileDetector;
 
   constructor(private client: Neo4jClient) {
     this.nodeManager = new NodeManager(client);
     this.edgeManager = new EdgeManager(client);
     this.embeddingService = new EmbeddingService();
     this.semanticSearchManager = new SemanticSearchManager(client, this.embeddingService);
+    this.languageDetector = new ProjectLanguageDetector();
+    this.buildFileDetector = new ProjectBuildFileDetector();
     
     // Initialize parsers
     this.parsers = new Map();
@@ -159,73 +166,92 @@ export class CodebaseScanner {
     }
   }
 
-  async validateProjectStructure(projectPath: string): Promise<{
-    isValid: boolean;
-    suggestions: string[];
-    detectedLanguages: Language[];
-  }> {
-    const suggestions: string[] = [];
-    const detectedLanguages: Language[] = [];
-
+  async validateProjectStructure(projectPath: string): Promise<ProjectDetectionResult> {
     // Check if path exists
     if (!fs.existsSync(projectPath)) {
       return {
         isValid: false,
         suggestions: [`Project path does not exist: ${projectPath}`],
-        detectedLanguages: []
+        detectedLanguages: [],
+        projectMetadata: [],
+        subProjects: [],
+        isMonoRepo: false
       };
     }
 
-    // Detect languages by file extensions
-    const files = await glob('**/*.{ts,tsx,js,jsx,java,py,cs}', { 
-      cwd: projectPath,
-      ignore: ['node_modules/**', 'dist/**', 'build/**', '.git/**']
-    });
+    try {
+      // Use the new comprehensive detection system
+      const result = await this.buildFileDetector.detect(projectPath);
+      
+      // If no build files found, fallback to file extension detection
+      if (result.detectedLanguages.length === 0) {
+        const extensionLanguages = await this.languageDetector.detectFromFileExtensions(projectPath);
+        result.detectedLanguages = extensionLanguages;
+        result.suggestions.push('💡 No build files detected - using file extension detection');
+        
+        if (extensionLanguages.length === 0) {
+          result.suggestions.push('⚠️ No source files found - check project path and file extensions');
+          result.isValid = false;
+        } else {
+          result.isValid = true;
+        }
+      }
 
-    const extensions = new Set(files.map(f => path.extname(f).toLowerCase()));
-    
-    if (extensions.has('.ts') || extensions.has('.tsx')) {
-      detectedLanguages.push('typescript');
-    }
-    if (extensions.has('.js') || extensions.has('.jsx')) {
-      detectedLanguages.push('javascript');
-    }
-    if (extensions.has('.java')) {
-      detectedLanguages.push('java');
-    }
-    if (extensions.has('.py')) {
-      detectedLanguages.push('python');
-    }
-    if (extensions.has('.cs')) {
-      detectedLanguages.push('csharp');
-      suggestions.push('C# parsing not yet implemented');
-    }
+      // Add recommendations for project structure
+      const srcDirExists = fs.existsSync(path.join(projectPath, 'src'));
+      if (!srcDirExists && result.detectedLanguages.length > 0) {
+        result.suggestions.push('💡 Consider organizing code in a src/ directory for better analysis');
+      }
 
-    // Check for common project indicators
-    const packageJsonExists = fs.existsSync(path.join(projectPath, 'package.json'));
-    const tsconfigExists = fs.existsSync(path.join(projectPath, 'tsconfig.json'));
-    const srcDirExists = fs.existsSync(path.join(projectPath, 'src'));
+      // Add language validation warnings
+      const validation = this.languageDetector.validateLanguages(result.detectedLanguages);
+      result.suggestions.push(...validation.warnings);
 
-    if (packageJsonExists) {
-      suggestions.push('✅ package.json found - Node.js project detected');
+      return result;
+    } catch (error) {
+      return {
+        isValid: false,
+        suggestions: [`❌ Failed to analyze project structure: ${error instanceof Error ? error.message : String(error)}`],
+        detectedLanguages: [],
+        projectMetadata: [],
+        subProjects: [],
+        isMonoRepo: false
+      };
     }
-    
-    if (tsconfigExists) {
-      suggestions.push('✅ tsconfig.json found - TypeScript project detected');
-    }
+  }
 
-    if (!srcDirExists && files.length > 0) {
-      suggestions.push('💡 Consider organizing code in a src/ directory for better analysis');
-    }
+  /**
+   * Get recommended scan configuration with auto-detected languages and metadata
+   */
+  async getRecommendedScanConfig(projectPath: string, projectId?: string): Promise<{
+    scanConfig: Partial<ScanConfig>;
+    projectMetadata: any[];
+    suggestions: string[];
+  }> {
+    const detection = await this.validateProjectStructure(projectPath);
+    const recommendation = await this.languageDetector.getRecommendedScanConfig(projectPath);
 
-    if (files.length === 0) {
-      suggestions.push('⚠️ No source files found - check project path and file extensions');
+    const scanConfig: Partial<ScanConfig> = {
+      projectPath,
+      projectId: projectId || path.basename(projectPath),
+      languages: recommendation.languages,
+      excludePaths: recommendation.excludePaths,
+      includeTests: recommendation.includeTests
+    };
+
+    // Extract project name from metadata if available
+    const primaryMetadata = detection.projectMetadata.find(m => 
+      m.language === recommendation.primaryLanguage
+    ) || detection.projectMetadata[0];
+
+    if (primaryMetadata?.name) {
+      scanConfig.projectName = primaryMetadata.name;
     }
 
     return {
-      isValid: files.length > 0 && detectedLanguages.length > 0,
-      suggestions,
-      detectedLanguages
+      scanConfig,
+      projectMetadata: detection.projectMetadata,
+      suggestions: [...detection.suggestions, ...recommendation.suggestions]
     };
   }
 

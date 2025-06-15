@@ -6,7 +6,7 @@ CodeRAG is a revolutionary tool that builds a comprehensive graph database of yo
 
 ## What CodeRAG Does
 
-🔍 **Smart Code Scanning** - Automatically analyzes your codebase and builds a detailed graph of all classes, methods, interfaces, and their relationships
+🔍 **Smart Code Scanning** - Automatically detects project languages from build files and metadata, then analyzes your codebase to build a detailed graph of all classes, methods, interfaces, and their relationships
 
 🧠 **Semantic Code Search** - Find code by functionality using natural language queries like "functions that validate email addresses"
 
@@ -55,11 +55,12 @@ Get up and running in 5 minutes:
    # Edit .env with your Neo4J credentials and OpenAI API key for semantic search
    ```
 
-4. **Scan Your First Project**
+4. **Scan Your First Project (Auto-Detection)**
    ```bash
    npm run build
    npm run scan /path/to/your/project
    ```
+   *Languages and frameworks are automatically detected from build files*
 
 5. **Connect to Your AI Assistant**
    
@@ -79,7 +80,9 @@ Get up and running in 5 minutes:
 
 ## Key Features
 
-- 🔧 **Automated Scanning** - Parses TypeScript, JavaScript, Java, and Python projects
+- 🔧 **Automated Scanning** - Parses TypeScript, JavaScript, Java, and Python projects with automatic language detection
+- 🎯 **Smart Language Detection** - Automatically detects languages, frameworks, and project structure from build files
+- 🏗️ **Multi-Project Support** - Manage multiple codebases in a single database with project isolation
 - 🧠 **Semantic Search** - Natural language code discovery powered by OpenAI embeddings
 - 🎯 **Smart Analysis** - Identifies classes, methods, interfaces, inheritance, and dependencies  
 - 📈 **Quality Metrics** - CK metrics, package coupling, architectural issue detection
@@ -122,8 +125,13 @@ Use get_similar_code with node_id="auth_function_id"
 ## Common Commands
 
 ```bash
-# Quick project scan (includes semantic embedding generation if enabled)
+# Auto-detect and scan project (recommended)
 npm run scan /path/to/project
+
+# Scan multiple projects (multi-project database)
+npm run scan /path/to/frontend-app
+npm run scan /path/to/backend-api  
+npm run scan /path/to/python-scripts
 
 # Start for AI assistant integration  
 npm start
@@ -136,6 +144,9 @@ node build/index.js --tool initialize_semantic_search
 
 # Update embeddings for existing projects
 node build/index.js --tool update_embeddings --project-id my-project
+
+# List all scanned projects with statistics
+node build/index.js --tool list_projects
 
 # Start web server for HTTP access
 npm start -- --sse --port 3000

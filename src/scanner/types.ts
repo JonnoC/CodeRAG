@@ -76,3 +76,55 @@ export interface LanguageParser {
     errors: ParseError[];
   }>;
 }
+
+// New interfaces for improved language detection and project metadata
+
+export interface ProjectMetadata {
+  name?: string;
+  version?: string;
+  description?: string;
+  language: Language;
+  buildSystem?: BuildSystem;
+  dependencies?: string[];
+  devDependencies?: string[];
+  framework?: string;
+  subProjects?: SubProject[];
+  buildFilePath: string;
+}
+
+export interface SubProject {
+  name: string;
+  path: string;
+  language: Language;
+  buildSystem?: BuildSystem;
+  metadata?: ProjectMetadata;
+}
+
+export interface ProjectDetectionResult {
+  isValid: boolean;
+  suggestions: string[];
+  detectedLanguages: Language[];
+  primaryLanguage?: Language;
+  projectMetadata: ProjectMetadata[];
+  subProjects: SubProject[];
+  isMonoRepo: boolean;
+}
+
+export type BuildSystem = 
+  | 'npm' | 'yarn' | 'pnpm'           // JavaScript/TypeScript
+  | 'maven' | 'gradle' | 'ant'         // Java
+  | 'pip' | 'poetry' | 'pipenv' | 'conda' // Python
+  | 'dotnet' | 'msbuild' | 'nuget'     // C#
+  | 'make' | 'cmake' | 'bazel';        // General
+
+export interface BuildFileDetector {
+  detect(projectPath: string): Promise<ProjectDetectionResult>;
+  canDetect(filePath: string): boolean;
+  extractMetadata(filePath: string): Promise<ProjectMetadata | null>;
+}
+
+export interface LanguageDetector {
+  detectFromBuildFiles(projectPath: string): Promise<Language[]>;
+  detectFromFileExtensions(projectPath: string): Promise<Language[]>;
+  detectPrimaryLanguage(languages: Language[], projectPath: string): Promise<Language | undefined>;
+}

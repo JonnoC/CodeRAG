@@ -1,16 +1,25 @@
 # Scanner Usage Guide
 
-The codebase scanner is your entry point for populating the Neo4J graph with your code structure.
+The codebase scanner automatically detects your project languages and structure, making it easy to populate the Neo4J graph with your code.
+
+## Automatic Language Detection
+
+🎯 **New Feature**: The scanner now automatically detects project languages using:
+- **Build file analysis** (package.json, pom.xml, build.gradle, setup.py, pyproject.toml, etc.)
+- **Project metadata extraction** (name, version, description, dependencies, frameworks)
+- **Multi-language project support** (e.g., TypeScript frontend + Java backend)
+- **Sub-project detection** for mono-repositories
+- **Fallback to file extension detection** when build files aren't available
 
 ## Scanning a Project
 
 ### Command Line Scanner
 
 ```bash
-# Scan a TypeScript/JavaScript project
+# Auto-detect languages and scan (recommended)
 npm run scan /path/to/your/project
 
-# Scan with specific languages
+# Manual language specification (optional override)
 npm run scan /path/to/your/project -- --languages typescript,javascript
 
 # Include test files
@@ -30,6 +39,26 @@ npm run scan /path/to/your/project -- --exclude node_modules,dist,build
 - `--clear-graph`: Clears only the current project's data (useful for re-scanning a single project in a multi-project setup)
 - `--clear-all`: Clears the entire database (all projects) - use when starting fresh or resolving data conflicts
 
+### Auto-Detection Examples
+
+```bash
+# TypeScript project (detects from package.json)
+npm run scan /path/to/react-app
+# Output: ✅ TypeScript project detected, Framework: React
+
+# Java project (detects from pom.xml or build.gradle)
+npm run scan /path/to/spring-app  
+# Output: ✅ Java project detected, Build system: Maven, Framework: Spring Boot
+
+# Python project (detects from setup.py or pyproject.toml)
+npm run scan /path/to/django-app
+# Output: ✅ Python project detected, Build system: Poetry, Framework: Django
+
+# Multi-language project
+npm run scan /path/to/fullstack-app
+# Output: ✅ Multi-language project detected: TypeScript (frontend), Java (backend)
+```
+
 ### Via MCP Tools
 
 Once connected to an AI tool, you can use:
@@ -40,11 +69,18 @@ Use the scan_dir tool to scan my current project at /path/to/project
 
 **Parameters for scan_dir:**
 - `directory_path`: Path to your project root
-- `languages`: Array of languages (`["typescript", "javascript", "java", "python"]`)
-- `exclude_paths`: Paths to exclude (`["node_modules", "dist", "build"]`)
-- `include_tests`: Include test files (`true`/`false`)
+- `languages`: Array of languages (auto-detected if not specified)
+- `exclude_paths`: Paths to exclude (auto-suggested based on detected languages)
+- `include_tests`: Include test files (`true`/`false`, default based on project type)
 - `clear_existing`: Clear existing graph data (`true`/`false`)
 - `max_depth`: Maximum directory depth to scan (`10`)
+
+**Auto-Detection Features:**
+- Languages are automatically detected from build files and file extensions
+- Project metadata (name, version, description) extracted from build files
+- Framework detection (React, Spring Boot, Django, etc.) from dependencies
+- Language-specific exclude paths automatically suggested
+- Mono-repository and sub-project detection
 
 ## Supported Languages
 
@@ -98,15 +134,21 @@ npm run scan /path/to/project -- --include-tests
 
 ### Language Selection
 
-**Auto-Detection:**
-By default, the scanner auto-detects languages based on file extensions.
+**Automatic Detection (Recommended):**
+The scanner now uses intelligent language detection:
 
-**Manual Selection:**
+1. **Build File Analysis** - Analyzes package.json, pom.xml, build.gradle, setup.py, pyproject.toml, etc.
+2. **Metadata Extraction** - Extracts project name, version, dependencies, and frameworks
+3. **Multi-Language Support** - Handles projects with multiple languages (e.g., frontend + backend)
+4. **Sub-Project Detection** - Identifies mono-repositories with multiple sub-projects
+5. **File Extension Fallback** - Uses file extensions when build files aren't available
+
+**Manual Override (When Needed):**
 ```bash
-# Scan only specific languages
+# Override auto-detection for specific languages only
 npm run scan /path/to/project -- --languages java,python
 
-# TypeScript only
+# Force TypeScript only (useful for mixed projects)
 npm run scan /path/to/project -- --languages typescript
 ```
 
@@ -119,15 +161,19 @@ npm run scan /path/to/project -- --max-depth 5
 
 ## Scanner Output
 
-### Successful Scan
+### Successful Scan with Auto-Detection
 
 ```
 === CodeRAG Project Scanner ===
-Scanning: /path/to/my-project
-Project ID: my-project
+Scanning: /path/to/my-react-app
+Project ID: my-react-app
 
-🔍 Validating project structure...
-✅ Project validation complete
+🔍 Auto-detecting project structure...
+✅ TypeScript project detected
+📋 Project: my-react-app v1.2.0
+🏗️ Framework: React
+📦 Build system: npm
+💡 Recommendations: Include test files, exclude node_modules, dist
 
 📁 Scanning files...
   TypeScript: 45 files
@@ -148,6 +194,9 @@ Project ID: my-project
 ✅ Scan completed successfully!
 
 Project Summary:
+- Project Name: my-react-app
+- Version: 1.2.0
+- Framework: React
 - Total entities: 276
 - Total relationships: 439
 - Languages: TypeScript, JavaScript
@@ -220,11 +269,27 @@ npm run scan /path/to/large-project -- \
 
 ### 4. Multi-Language Projects
 
+**Automatic Multi-Language Detection:**
 ```bash
-# Scan polyglot project with multiple languages
+# Auto-detects all languages in polyglot projects
+npm run scan /path/to/fullstack-project
+# Output: ✅ Multi-language project: TypeScript (frontend), Java (backend), Python (scripts)
+```
+
+**Manual Multi-Language Specification:**
+```bash
+# Override auto-detection for specific languages
 npm run scan /path/to/polyglot-project -- \
   --languages typescript,java,python \
   --include-tests
+```
+
+**Mono-Repository Handling:**
+```bash
+# Auto-detects sub-projects in mono-repositories
+npm run scan /path/to/monorepo
+# Output: 🏗️ Mono-repository detected with 3 sub-projects
+# Suggestion: Consider scanning sub-projects separately for better organization
 ```
 
 ## Troubleshooting

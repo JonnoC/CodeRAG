@@ -20,7 +20,7 @@ program
   .argument('<project-path>', 'Path to the project directory to scan')
   .option('-p, --project-id <id>', 'Project ID for multi-project separation')
   .option('-n, --project-name <name>', 'Project name (defaults to project ID or directory name)')
-  .option('-l, --languages <languages>', 'Comma-separated list of languages to scan (typescript,javascript,java,python,csharp)', 'typescript,javascript')
+  .option('-l, --languages <languages>', 'Comma-separated list of languages to scan (auto-detected if not specified)')
   .option('-e, --exclude <paths>', 'Comma-separated list of paths to exclude', 'node_modules,dist,build')
   .option('--include-tests', 'Include test files in the scan', false)
   .option('--clear-graph', 'Clear existing graph data for this project before scanning', false)
@@ -51,35 +51,53 @@ program
       // Initialize scanner
       const scanner = new CodebaseScanner(client);
 
-      // Validate project structure
-      console.log(`🔍 Validating project structure...`);
-      const validation = await scanner.validateProjectStructure(resolvedPath);
+      // Get recommended scan configuration with auto-detection
+      console.log(`🔍 Analyzing project structure and detecting languages...`);
+      const projectId = options.projectId || path.basename(resolvedPath);
+      const recommendation = await scanner.getRecommendedScanConfig(resolvedPath, projectId);
       
       console.log(`\n📋 Project Analysis:`);
-      validation.suggestions.forEach(suggestion => console.log(`  ${suggestion}`));
+      recommendation.suggestions.forEach(suggestion => console.log(`  ${suggestion}`));
       
-      if (!validation.isValid) {
-        console.error(`\n❌ Project validation failed. Please check the suggestions above.`);
+      // Show detected project metadata
+      if (recommendation.projectMetadata.length > 0) {
+        console.log(`\n📦 Project Metadata:`);
+        recommendation.projectMetadata.forEach(meta => {
+          console.log(`  📄 ${meta.name || 'Unnamed'} (${meta.language})`);
+          if (meta.version) console.log(`    Version: ${meta.version}`);
+          if (meta.description) console.log(`    Description: ${meta.description}`);
+          if (meta.framework) console.log(`    Framework: ${meta.framework}`);
+          if (meta.buildSystem) console.log(`    Build System: ${meta.buildSystem}`);
+        });
+      }
+      
+      if (!recommendation.scanConfig.languages?.length) {
+        console.error(`\n❌ No supported languages detected. Please check the project structure.`);
         await client.disconnect();
         process.exit(1);
       }
-
+      
       if (options.validateOnly) {
         console.log(`\n✅ Project structure validation completed.`);
         await client.disconnect();
         return;
       }
-
-      // Determine project ID
-      const projectId = options.projectId || path.basename(resolvedPath);
-      const projectName = options.projectName || projectId;
+      
+      // Use recommended configuration, but allow CLI overrides
+      const languages = options.languages ? 
+        options.languages.split(',').map((l: string) => l.trim()) as Language[] : 
+        recommendation.scanConfig.languages;
+        
+      const excludePaths = options.exclude ? 
+        options.exclude.split(',').map((p: string) => p.trim()) :
+        recommendation.scanConfig.excludePaths || ['node_modules', 'dist', 'build'];
+        
+      const projectName = options.projectName || 
+        recommendation.scanConfig.projectName || 
+        projectId;
       
       console.log(`📋 Project ID: ${projectId}`);
       console.log(`📋 Project Name: ${projectName}`);
-
-      // Parse languages
-      const languages = options.languages.split(',').map((l: string) => l.trim()) as Language[];
-      const excludePaths = options.exclude.split(',').map((p: string) => p.trim());
 
       // Prepare scan configuration
       const scanConfig: ScanConfig = {

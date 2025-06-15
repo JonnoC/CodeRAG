@@ -46,20 +46,24 @@ CodeRAG transforms your codebase into a searchable graph database, enabling:
 - **🏗️ Architecture Insights** - Detect design patterns, architectural issues, and violations
 - **🤖 AI-Powered Exploration** - Use natural language to query your codebase structure
 - **📈 Multi-Project Management** - Analyze multiple codebases in a unified view
+- **🎯 Smart Language Detection** - Automatically detects project languages from build files and metadata
+- **🏗️ Mono-Repository Support** - Handles complex projects with multiple languages and sub-projects
 
 ## Example Workflows
 
 ### Analyzing a New Project
 
-1. **Scan the project:**
+1. **Auto-scan the project (languages detected automatically):**
    ```
    Use scan_dir to scan /path/to/my/project with clear_existing=true
    ```
+   *The scanner will automatically detect TypeScript, Java, Python, etc. from build files*
 
-2. **Get overview:**
+2. **Get overview with project metadata:**
    ```
    Use get_project_summary to show me the codebase overview
    ```
+   *Includes auto-extracted project name, version, framework information*
 
 3. **Find issues:**
    ```
@@ -129,8 +133,15 @@ CodeRAG transforms your codebase into a searchable graph database, enabling:
 # Setup
 npm install && npm run build
 
-# Scan project  
+# Auto-detect and scan project (recommended)
 npm run scan /path/to/project
+
+# Scan multiple projects (multi-project support)
+npm run scan /path/to/project1
+npm run scan /path/to/project2
+
+# List all scanned projects
+Use list_projects tool to see all projects with statistics
 
 # Start STDIO mode
 npm start

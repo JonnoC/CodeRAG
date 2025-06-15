@@ -320,6 +320,17 @@ export abstract class BaseHandler {
             type: { 
               type: 'string',
               enum: ['class', 'interface', 'enum', 'exception', 'function', 'method', 'field', 'package', 'module']
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
             }
           },
           required: ['project', 'type']
@@ -332,7 +343,18 @@ export abstract class BaseHandler {
           type: 'object',
           properties: {
             project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
-            search_term: { type: 'string', description: 'Search term' }
+            search_term: { type: 'string', description: 'Search term' },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
+            }
           },
           required: ['project', 'search_term']
         }
@@ -388,7 +410,18 @@ export abstract class BaseHandler {
           type: 'object',
           properties: {
             project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
-            source_id: { type: 'string', description: 'Source node ID' }
+            source_id: { type: 'string', description: 'Source node ID' },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
+            }
           },
           required: ['project', 'source_id']
         }
@@ -400,7 +433,18 @@ export abstract class BaseHandler {
           type: 'object',
           properties: {
             project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
-            method_name: { type: 'string', description: 'Method name to search for' }
+            method_name: { type: 'string', description: 'Method name to search for' },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
+            }
           },
           required: ['project', 'method_name']
         }
@@ -412,7 +456,18 @@ export abstract class BaseHandler {
           type: 'object',
           properties: {
             project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
-            interface_name: { type: 'string', description: 'Interface name' }
+            interface_name: { type: 'string', description: 'Interface name' },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
+            }
           },
           required: ['project', 'interface_name']
         }
@@ -459,7 +514,18 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
-            project: { type: 'string', description: 'Project name or identifier to scope the operation to' }
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
+            }
           },
           required: ['project']
         }
@@ -558,6 +624,17 @@ export abstract class BaseHandler {
               type: 'string',
               enum: ['class', 'interface', 'enum', 'exception', 'function', 'method', 'field', 'package', 'module'],
               description: 'Optional: Filter by node type'
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
             }
           },
           required: ['project', 'annotation_name']
@@ -631,6 +708,17 @@ export abstract class BaseHandler {
               type: 'string',
               enum: ['class', 'interface', 'enum', 'exception', 'function', 'method', 'field', 'package', 'module'],
               description: 'Optional: Filter by node type'
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
             }
           },
           required: ['project']
@@ -647,6 +735,17 @@ export abstract class BaseHandler {
               type: 'boolean',
               description: 'Whether to include detailed information about each usage',
               default: false
+            },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
             }
           },
           required: ['project']
@@ -678,7 +777,18 @@ export abstract class BaseHandler {
         inputSchema: {
           type: 'object',
           properties: {
-            project: { type: 'string', description: 'Project name or identifier to scope the operation to' }
+            project: { type: 'string', description: 'Project name or identifier to scope the operation to' },
+            limit: {
+              type: 'number',
+              description: 'Maximum number of results to return',
+              minimum: 1,
+              maximum: 1000
+            },
+            offset: {
+              type: 'number',
+              description: 'Number of results to skip (for pagination)',
+              minimum: 0
+            }
           },
           required: ['project']
         }

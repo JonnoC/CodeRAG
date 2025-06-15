@@ -10,40 +10,53 @@ CodeRAG uses a **project isolation strategy** where:
 - Projects are isolated by default but can enable cross-project analysis
 - Each project maintains separate quality metrics and statistics
 
-## Project Identification
+## Project Identification & Auto-Detection
 
-When CodeRAG scans a project, it automatically generates a project identifier:
+CodeRAG now automatically extracts project information from build files and metadata:
 
 ```bash
-# Project ID is derived from the directory name
-npm run scan /path/to/my-awesome-app
-# Creates project_id: "my-awesome-app"
+# Auto-detects project name from package.json, pom.xml, etc.
+npm run scan /path/to/my-react-app
+# Detects: TypeScript, React framework, project name "my-react-app" v1.2.0
 
-npm run scan /Users/dev/frontend/react-dashboard  
-# Creates project_id: "react-dashboard"
+npm run scan /path/to/spring-backend
+# Detects: Java, Spring Boot framework, project name from pom.xml
+
+npm run scan /path/to/python-service
+# Detects: Python, Django framework, project name from setup.py/pyproject.toml
 ```
 
-**Project ID Rules:**
-- Derived from the final directory name in the path
-- Converted to lowercase and sanitized
-- Special characters replaced with hyphens
-- Must be unique within the database
+**Project Detection Features:**
+- **Build File Analysis**: Extracts metadata from package.json, pom.xml, build.gradle, setup.py, pyproject.toml
+- **Framework Detection**: Identifies React, Spring Boot, Django, Express, etc. from dependencies
+- **Multi-Language Support**: Handles projects with multiple languages (frontend + backend)
+- **Sub-Project Detection**: Automatically discovers mono-repositories with multiple sub-projects
+- **Automatic Naming**: Uses project name from build files, falls back to directory name
+- **Version Tracking**: Extracts version information from build files
 
 ## Managing Multiple Projects
 
-### 1. Scanning Multiple Projects
+### 1. Scanning Multiple Projects with Auto-Detection
 
 ```bash
-# Scan first project (clears entire database)
-npm run scan /path/to/project-a -- --clear-all
+# Scan first project (auto-detects TypeScript/React)
+npm run scan /path/to/react-frontend -- --clear-all
+# Output: ✅ TypeScript project detected, Framework: React, Name: "my-frontend" v2.1.0
 
-# Scan additional projects (preserves existing data)
-npm run scan /path/to/project-b
-npm run scan /path/to/project-c
-npm run scan /path/to/legacy-system
+# Scan backend (auto-detects Java/Spring Boot)
+npm run scan /path/to/spring-backend
+# Output: ✅ Java project detected, Framework: Spring Boot, Name: "api-service" v1.0.0
 
-# Re-scan a specific project (clears only that project's data)
-npm run scan /path/to/project-a -- --clear-graph
+# Scan Python service (auto-detects Python/Django)
+npm run scan /path/to/python-api
+# Output: ✅ Python project detected, Framework: Django, Name: "data-processor" v0.3.2
+
+# Scan mono-repository (auto-detects multiple languages)
+npm run scan /path/to/fullstack-monorepo
+# Output: 🏗️ Mono-repository detected: TypeScript (frontend), Java (backend), Python (scripts)
+
+# Re-scan with updated code (preserves project metadata)
+npm run scan /path/to/react-frontend -- --clear-graph
 ```
 
 ### 2. Listing All Projects
@@ -289,16 +302,23 @@ npm run scan /path/to/order-service
 mcp call get_project_summary --arguments '{"project_id": "legacy-monolith"}'
 ```
 
-### Scenario 3: Multi-Language Portfolio
+### Scenario 3: Multi-Language Portfolio with Auto-Detection
 
 ```bash
-# Scan different language projects
+# Automatically detect and scan different language projects
 npm run scan /path/to/java-backend
-npm run scan /path/to/python-ml-service
-npm run scan /path/to/typescript-frontend
+# Output: ✅ Java project detected, Framework: Spring Boot, Build: Maven
 
-# Compare architectural patterns
+npm run scan /path/to/python-ml-service  
+# Output: ✅ Python project detected, Frameworks: FastAPI, scikit-learn, Build: Poetry
+
+npm run scan /path/to/typescript-frontend
+# Output: ✅ TypeScript project detected, Framework: Next.js, Build: npm
+
+# Compare frameworks and architectural patterns across languages
 mcp call find_architectural_issues  # Cross-project analysis
+mcp call list_projects --arguments '{"include_stats": true}'
+# Shows detected frameworks, languages, and quality metrics for each project
 ```
 
 ## Troubleshooting Multi-Project Issues

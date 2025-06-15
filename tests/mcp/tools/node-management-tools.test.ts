@@ -278,10 +278,24 @@ describe('Node Management Tools', () => {
       const result = await findNodesByType(mockNodeManager, params);
 
       expect(mockNodeManager.findNodesByType).toHaveBeenCalledWith('class', 'test-project');
-      expect(result.content[0].text).toContain('Class1');
-      expect(result.content[0].text).toContain('Class2');
-      expect(result.content[0].text).toContain('class1');
-      expect(result.content[0].text).toContain('class2');
+      
+      // Parse the JSON response to check structure
+      const responseData = JSON.parse(result.content[0].text);
+      expect(responseData).toHaveProperty('results');
+      expect(responseData).toHaveProperty('pagination');
+      expect(responseData).toHaveProperty('truncated');
+      expect(responseData).toHaveProperty('estimatedTokens');
+      
+      // Check pagination metadata
+      expect(responseData.pagination.total).toBe(2);
+      expect(responseData.pagination.returned).toBe(2);
+      expect(responseData.pagination.offset).toBe(0);
+      expect(responseData.pagination.hasMore).toBe(false);
+      
+      // Check that results contain the expected nodes
+      expect(responseData.results).toHaveLength(2);
+      expect(responseData.results[0].name).toBe('Class1');
+      expect(responseData.results[1].name).toBe('Class2');
     });
 
     test('should handle no nodes found', async () => {
@@ -294,7 +308,18 @@ describe('Node Management Tools', () => {
 
       const result = await findNodesByType(mockNodeManager, params);
 
-      expect(result.content[0].text).toBe('[]');
+      // Parse the JSON response to check empty results structure
+      const responseData = JSON.parse(result.content[0].text);
+      expect(responseData).toHaveProperty('results');
+      expect(responseData).toHaveProperty('pagination');
+      expect(responseData).toHaveProperty('truncated');
+      expect(responseData).toHaveProperty('estimatedTokens');
+      
+      // Check empty results
+      expect(responseData.results).toEqual([]);
+      expect(responseData.pagination.total).toBe(0);
+      expect(responseData.pagination.returned).toBe(0);
+      expect(responseData.pagination.hasMore).toBe(false);
     });
 
     test('should handle findNodesByType errors', async () => {
@@ -305,7 +330,11 @@ describe('Node Management Tools', () => {
 
       mockNodeManager.findNodesByType.mockRejectedValue(new Error('Database error'));
 
-      await expect(findNodesByType(mockNodeManager, params)).rejects.toThrow('Database error');
+      const result = await findNodesByType(mockNodeManager, params);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Failed to find nodes');
+      expect(result.content[0].text).toContain('Database error');
     });
   });
 
@@ -338,10 +367,28 @@ describe('Node Management Tools', () => {
       const result = await searchNodes(mockNodeManager, params);
 
       expect(mockNodeManager.searchNodes).toHaveBeenCalledWith('Test', 'test-project');
-      expect(result.content[0].text).toContain('TestClass');
-      expect(result.content[0].text).toContain('testMethod');
-      expect(result.content[0].text).toContain('test1');
-      expect(result.content[0].text).toContain('test2');
+      
+      // Parse the JSON response to check structure
+      const responseData = JSON.parse(result.content[0].text);
+      expect(responseData).toHaveProperty('searchTerm');
+      expect(responseData).toHaveProperty('results');
+      expect(responseData).toHaveProperty('pagination');
+      expect(responseData).toHaveProperty('truncated');
+      expect(responseData).toHaveProperty('estimatedTokens');
+      
+      // Check search term
+      expect(responseData.searchTerm).toBe('Test');
+      
+      // Check pagination metadata
+      expect(responseData.pagination.total).toBe(2);
+      expect(responseData.pagination.returned).toBe(2);
+      expect(responseData.pagination.offset).toBe(0);
+      expect(responseData.pagination.hasMore).toBe(false);
+      
+      // Check that results contain the expected nodes
+      expect(responseData.results).toHaveLength(2);
+      expect(responseData.results[0].name).toBe('TestClass');
+      expect(responseData.results[1].name).toBe('testMethod');
     });
 
     test('should handle no search results', async () => {
@@ -354,7 +401,22 @@ describe('Node Management Tools', () => {
 
       const result = await searchNodes(mockNodeManager, params);
 
-      expect(result.content[0].text).toBe('[]');
+      // Parse the JSON response to check empty results structure
+      const responseData = JSON.parse(result.content[0].text);
+      expect(responseData).toHaveProperty('searchTerm');
+      expect(responseData).toHaveProperty('results');
+      expect(responseData).toHaveProperty('pagination');
+      expect(responseData).toHaveProperty('truncated');
+      expect(responseData).toHaveProperty('estimatedTokens');
+      
+      // Check search term
+      expect(responseData.searchTerm).toBe('NonExistent');
+      
+      // Check empty results
+      expect(responseData.results).toEqual([]);
+      expect(responseData.pagination.total).toBe(0);
+      expect(responseData.pagination.returned).toBe(0);
+      expect(responseData.pagination.hasMore).toBe(false);
     });
 
     test('should handle searchNodes errors', async () => {
@@ -365,7 +427,11 @@ describe('Node Management Tools', () => {
 
       mockNodeManager.searchNodes.mockRejectedValue(new Error('Database error'));
 
-      await expect(searchNodes(mockNodeManager, params)).rejects.toThrow('Database error');
+      const result = await searchNodes(mockNodeManager, params);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Failed to search nodes');
+      expect(result.content[0].text).toContain('Database error');
     });
   });
 });
