@@ -53,6 +53,18 @@ SEMANTIC_SEARCH_PROVIDER=disabled
 # EMBEDDING_BATCH_SIZE=100
 # SIMILARITY_THRESHOLD=0.7
 
+# Remote Repository Authentication (Optional)
+# GitHub
+# GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxx
+
+# GitLab
+# GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxx
+# GITLAB_HOST=gitlab.company.com  # Optional, for self-hosted GitLab
+
+# Bitbucket
+# BITBUCKET_USERNAME=your_username
+# BITBUCKET_APP_PASSWORD=your_app_password
+
 # Optional: Server configuration
 SERVER_PORT=3000
 LOG_LEVEL=info
@@ -80,6 +92,67 @@ To enable semantic code search with natural language queries:
    ```
 
 For detailed semantic search configuration, see the [Semantic Search Guide](semantic-search.md).
+
+### Remote Repository Authentication Setup (Optional)
+
+CodeRAG can directly analyze remote repositories from GitHub, GitLab, and Bitbucket without requiring local cloning. To access private repositories, configure authentication tokens:
+
+#### GitHub Authentication
+
+1. **Create a Personal Access Token**:
+   - Go to [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+   - Click "Generate new token (classic)"
+   - Select scopes: `repo` (for private repos) or `public_repo` (for public repos only)
+   - Copy the generated token
+
+2. **Configure in `.env`**:
+   ```env
+   GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxx
+   ```
+
+#### GitLab Authentication
+
+1. **Create a Personal Access Token**:
+   - Go to GitLab Settings > Access Tokens
+   - Create token with `read_repository` scope
+   - Copy the generated token
+
+2. **Configure in `.env`**:
+   ```env
+   GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxx
+   # For self-hosted GitLab:
+   GITLAB_HOST=gitlab.company.com
+   ```
+
+#### Bitbucket Authentication
+
+1. **Create an App Password**:
+   - Go to Bitbucket Settings > Personal Bitbucket settings > App passwords
+   - Create password with `Repositories: Read` permission
+   - Copy the generated password
+
+2. **Configure in `.env`**:
+   ```env
+   BITBUCKET_USERNAME=your_username
+   BITBUCKET_APP_PASSWORD=your_app_password
+   ```
+
+#### Usage Examples
+
+Once authentication is configured, you can scan remote repositories directly:
+
+```bash
+# Public repositories (no authentication needed)
+npm run scan https://github.com/owner/repo.git
+
+# Private repositories (uses configured tokens)
+npm run scan https://github.com/private/repo.git
+npm run scan https://gitlab.com/private/repo.git
+npm run scan https://bitbucket.org/private/repo.git
+
+# Specific branches
+npm run scan https://github.com/owner/repo.git -- --branch develop
+```
 
 ## Neo4J Database Setup
 

@@ -7,6 +7,17 @@ export interface ScanConfig {
   includeTests?: boolean;
   maxDepth?: number;
   outputProgress?: boolean;
+  // Remote repository support
+  isRemote?: boolean;
+  gitUrl?: string;
+  gitBranch?: string;
+  tempDir?: string;
+  cleanupTemp?: boolean;
+  useCache?: boolean;
+  cacheOptions?: {
+    maxAge?: number;
+    forceRefresh?: boolean;
+  };
 }
 
 export type Language = 'typescript' | 'javascript' | 'java' | 'python' | 'csharp';

@@ -55,6 +55,21 @@ Test the connection:
 Use the get_project_summary tool to show me an overview of my codebase.
 ```
 
+**Example Workflow - Analyzing a Remote Repository:**
+```
+# Scan a remote repository
+Use scan_remote_repo to analyze https://github.com/microsoft/vscode.git
+
+# Get project overview
+Use get_project_summary to show the codebase structure
+
+# Find architectural issues
+Use find_architectural_issues to identify potential problems
+
+# Analyze key classes
+Use search_nodes to find classes containing "Editor" and then use calculate_ck_metrics on interesting classes
+```
+
 ### STDIO Mode (Alternative)
 
 **Step 1: Configure Claude Code**
@@ -256,7 +271,8 @@ When connected via MCP (SSE or STDIO), you get access to all CodeRAG tools:
 
 **Core Analysis:**
 - `get_project_summary` - Project overview and metrics
-- `scan_dir` - Scan codebase and populate graph
+- `scan_dir` - Scan local codebase and populate graph
+- `scan_remote_repo` - Scan remote repositories (GitHub, GitLab, Bitbucket)
 - `find_architectural_issues` - Detect design problems
 
 **Code Structure:**
@@ -299,6 +315,15 @@ curl -X POST http://localhost:3000/api/parse/directory \
     "directory_path": ".",
     "clear_existing": true
   }'
+
+# Scan remote repository
+curl -X POST http://localhost:3000/api/scan/remote \
+  -H "Content-Type: application/json" \
+  -d '{
+    "repository_url": "https://github.com/owner/repo.git",
+    "branch": "main",
+    "clear_existing": true
+  }'
 ```
 
 ---
@@ -311,6 +336,20 @@ Both modes require these environment variables:
 NEO4J_URI=bolt://localhost:7687
 NEO4J_USER=neo4j
 NEO4J_PASSWORD=your_password
+```
+
+**Optional - Remote Repository Authentication:**
+```bash
+# GitHub
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxx
+
+# GitLab
+GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxx
+GITLAB_HOST=gitlab.company.com  # Optional, for self-hosted GitLab
+
+# Bitbucket
+BITBUCKET_USERNAME=your_username
+BITBUCKET_APP_PASSWORD=your_app_password
 ```
 
 Set them either:

@@ -13,11 +13,22 @@ const program = new Command();
 
 program
   .name('coderag-scan')
-  .description('Scan a codebase and populate the CodeRAG graph database')
+  .description(`Scan a codebase and populate the CodeRAG graph database
+
+Authentication for private repositories:
+  Set environment variables:
+  - GITHUB_TOKEN for GitHub repositories
+  - GITLAB_TOKEN for GitLab repositories  
+  - BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD for Bitbucket
+  
+Examples:
+  coderag-scan ./my-project
+  coderag-scan https://github.com/owner/repo.git
+  GITHUB_TOKEN=ghp_xxx coderag-scan https://github.com/private/repo.git`)
   .version('1.0.0');
 
 program
-  .argument('<project-path>', 'Path to the project directory to scan')
+  .argument('<project-path>', 'Path to the project directory to scan or Git URL')
   .option('-p, --project-id <id>', 'Project ID for multi-project separation')
   .option('-n, --project-name <name>', 'Project name (defaults to project ID or directory name)')
   .option('-l, --languages <languages>', 'Comma-separated list of languages to scan (auto-detected if not specified)')
@@ -28,73 +39,165 @@ program
   .option('--analyze', 'Run quality analysis after scanning', false)
   .option('--output-report', 'Generate and save a scan report', false)
   .option('--validate-only', 'Only validate the project structure without scanning', false)
+  .option('--branch <branch>', 'Git branch to scan (for remote repositories)', 'main')
+  .option('--no-cleanup', 'Keep temporary files after scanning (for debugging)', false)
+  .option('--use-cache', 'Enable repository caching for faster subsequent scans', false)
+  .option('--clear-cache', 'Clear git repository cache before scanning', false)
   .option('-v, --verbose', 'Show detailed progress information', false)
   .action(async (projectPath: string, options) => {
     try {
-      // Resolve and validate project path
-      const resolvedPath = path.resolve(projectPath);
-      
-      if (!fs.existsSync(resolvedPath)) {
-        console.error(`❌ Project path does not exist: ${resolvedPath}`);
-        process.exit(1);
-      }
-
       console.log(`🚀 CodeRAG Scanner v1.0.0`);
-      console.log(`📁 Project: ${resolvedPath}`);
 
-      // Initialize Neo4j connection
+      // Initialize Neo4j connection first for git URL validation
       const config = getConfig();
       const client = new Neo4jClient(config);
       await client.connect();
       console.log(`🔗 Connected to Neo4j: ${config.uri}`);
-
-      // Initialize scanner
+      
+      // Initialize scanner with authentication configuration
       const scanner = new CodebaseScanner(client);
-
-      // Get recommended scan configuration with auto-detection
-      console.log(`🔍 Analyzing project structure and detecting languages...`);
-      const projectId = options.projectId || path.basename(resolvedPath);
-      const recommendation = await scanner.getRecommendedScanConfig(resolvedPath, projectId);
       
-      console.log(`\n📋 Project Analysis:`);
-      recommendation.suggestions.forEach(suggestion => console.log(`  ${suggestion}`));
+      // Configure git authentication from environment variables
+      const gitAuthConfig = {
+        github: {
+          token: process.env.GITHUB_TOKEN
+        },
+        gitlab: {
+          token: process.env.GITLAB_TOKEN,
+          host: process.env.GITLAB_HOST
+        },
+        bitbucket: {
+          username: process.env.BITBUCKET_USERNAME,
+          appPassword: process.env.BITBUCKET_APP_PASSWORD
+        }
+      };
       
-      // Show detected project metadata
-      if (recommendation.projectMetadata.length > 0) {
-        console.log(`\n📦 Project Metadata:`);
-        recommendation.projectMetadata.forEach(meta => {
-          console.log(`  📄 ${meta.name || 'Unnamed'} (${meta.language})`);
-          if (meta.version) console.log(`    Version: ${meta.version}`);
-          if (meta.description) console.log(`    Description: ${meta.description}`);
-          if (meta.framework) console.log(`    Framework: ${meta.framework}`);
-          if (meta.buildSystem) console.log(`    Build System: ${meta.buildSystem}`);
-        });
+      scanner.updateGitAuthConfig(gitAuthConfig);
+      
+      // Handle cache clearing for remote repositories
+      if (options.clearCache && options.useCache) {
+        console.log(`🧹 Clearing git repository cache...`);
+        await scanner.clearCache();
       }
       
-      if (!recommendation.scanConfig.languages?.length) {
-        console.error(`\n❌ No supported languages detected. Please check the project structure.`);
-        await client.disconnect();
-        process.exit(1);
+      let resolvedPath: string;
+      let isRemote = false;
+      let gitUrl: string | undefined;
+
+      // Check if input is a git URL
+      if (scanner.isGitUrl(projectPath)) {
+        console.log(`🌐 Remote repository detected: ${projectPath}`);
+        
+        // Validate remote repository
+        console.log(`🔍 Validating remote repository...`);
+        const isValid = await scanner.validateRemoteRepository(projectPath);
+        if (!isValid) {
+          console.error(`❌ Remote repository is not accessible: ${projectPath}`);
+          await client.disconnect();
+          process.exit(1);
+        }
+        
+        isRemote = true;
+        gitUrl = projectPath;
+        resolvedPath = ''; // Will be set during cloning
+        console.log(`✅ Remote repository is accessible`);
+      } else {
+        // Handle as local path
+        resolvedPath = path.resolve(projectPath);
+        
+        if (!fs.existsSync(resolvedPath)) {
+          console.error(`❌ Project path does not exist: ${resolvedPath}`);
+          await client.disconnect();
+          process.exit(1);
+        }
+        
+        console.log(`📁 Local project: ${resolvedPath}`);
+      }
+
+      // Get project ID (for remote repos, extract from URL)
+      let projectId = options.projectId;
+      if (!projectId) {
+        if (isRemote && gitUrl) {
+          const parsedUrl = scanner.parseGitUrl(gitUrl);
+          projectId = `${parsedUrl.owner}-${parsedUrl.repo}`;
+        } else {
+          projectId = path.basename(resolvedPath);
+        }
+      }
+
+      // Get recommended scan configuration with auto-detection
+      if (isRemote) {
+        console.log(`🔍 Remote repository will be analyzed after cloning...`);
+      } else {
+        console.log(`🔍 Analyzing project structure and detecting languages...`);
+      }
+      
+      let recommendation;
+      if (!isRemote) {
+        recommendation = await scanner.getRecommendedScanConfig(resolvedPath, projectId);
+        
+        console.log(`\n📋 Project Analysis:`);
+        recommendation.suggestions.forEach(suggestion => console.log(`  ${suggestion}`));
+        
+        // Show detected project metadata
+        if (recommendation.projectMetadata.length > 0) {
+          console.log(`\n📦 Project Metadata:`);
+          recommendation.projectMetadata.forEach(meta => {
+            console.log(`  📄 ${meta.name || 'Unnamed'} (${meta.language})`);
+            if (meta.version) console.log(`    Version: ${meta.version}`);
+            if (meta.description) console.log(`    Description: ${meta.description}`);
+            if (meta.framework) console.log(`    Framework: ${meta.framework}`);
+            if (meta.buildSystem) console.log(`    Build System: ${meta.buildSystem}`);
+          });
+        }
+        
+        if (!recommendation.scanConfig.languages?.length) {
+          console.error(`\n❌ No supported languages detected. Please check the project structure.`);
+          await client.disconnect();
+          process.exit(1);
+        }
       }
       
       if (options.validateOnly) {
-        console.log(`\n✅ Project structure validation completed.`);
+        if (isRemote) {
+          console.log(`\n✅ Remote repository validation completed.`);
+        } else {
+          console.log(`\n✅ Project structure validation completed.`);
+        }
         await client.disconnect();
         return;
       }
       
-      // Use recommended configuration, but allow CLI overrides
-      const languages = options.languages ? 
-        options.languages.split(',').map((l: string) => l.trim()) as Language[] : 
-        recommendation.scanConfig.languages;
-        
-      const excludePaths = options.exclude ? 
-        options.exclude.split(',').map((p: string) => p.trim()) :
-        recommendation.scanConfig.excludePaths || ['node_modules', 'dist', 'build'];
-        
-      const projectName = options.projectName || 
-        recommendation.scanConfig.projectName || 
-        projectId;
+      // Use recommended configuration or defaults for remote repositories
+      let languages: Language[];
+      let excludePaths: string[];
+      let projectName: string;
+      
+      if (isRemote) {
+        // For remote repositories, use CLI options or sensible defaults
+        languages = options.languages ? 
+          options.languages.split(',').map((l: string) => l.trim()) as Language[] : 
+          ['typescript', 'javascript', 'java', 'python']; // Default to all supported languages
+          
+        excludePaths = options.exclude ? 
+          options.exclude.split(',').map((p: string) => p.trim()) :
+          ['node_modules', 'dist', 'build', '.git'];
+          
+        projectName = options.projectName || projectId;
+      } else {
+        // For local repositories, use recommendation
+        languages = options.languages ? 
+          options.languages.split(',').map((l: string) => l.trim()) as Language[] : 
+          recommendation!.scanConfig.languages || [];
+          
+        excludePaths = options.exclude ? 
+          options.exclude.split(',').map((p: string) => p.trim()) :
+          recommendation!.scanConfig.excludePaths || ['node_modules', 'dist', 'build'];
+          
+        projectName = options.projectName || 
+          recommendation!.scanConfig.projectName || 
+          projectId;
+      }
       
       console.log(`📋 Project ID: ${projectId}`);
       console.log(`📋 Project Name: ${projectName}`);
@@ -107,10 +210,23 @@ program
         languages,
         excludePaths,
         includeTests: options.includeTests,
-        outputProgress: options.verbose
+        outputProgress: options.verbose,
+        // Remote repository settings
+        isRemote,
+        gitUrl,
+        gitBranch: options.branch,
+        cleanupTemp: !options.noCleanup,
+        useCache: options.useCache,
+        cacheOptions: {
+          forceRefresh: options.clearCache
+        }
       };
 
       console.log(`\n⚙️ Scan Configuration:`);
+      if (isRemote) {
+        console.log(`  Git URL: ${gitUrl}`);
+        console.log(`  Branch: ${options.branch}`);
+      }
       console.log(`  Languages: ${languages.join(', ')}`);
       console.log(`  Include tests: ${options.includeTests ? 'yes' : 'no'}`);
       console.log(`  Exclude paths: ${excludePaths.join(', ')}`);

@@ -9,6 +9,12 @@ jest.mock('../../src/graph/neo4j-client.js');
 jest.mock('../../src/scanner/detection/language-detector.js');
 jest.mock('../../src/scanner/detection/build-file-detector.js');
 jest.mock('fs');
+jest.mock('simple-git', () => ({
+  simpleGit: jest.fn(() => ({
+    clone: jest.fn(),
+    listRemote: jest.fn()
+  }))
+}));
 
 const MockNeo4jClient = Neo4jClient as jest.MockedClass<typeof Neo4jClient>;
 const MockLanguageDetector = ProjectLanguageDetector as jest.MockedClass<typeof ProjectLanguageDetector>;

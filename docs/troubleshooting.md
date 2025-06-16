@@ -168,6 +168,98 @@ This guide helps you diagnose and resolve common issues with CodeRAG.
    npm run scan /path/to/project
    ```
 
+### 5. Remote Repository Issues
+
+**Error:** Remote repository scanning fails
+
+**Symptoms:**
+- Authentication failures (401 Unauthorized)
+- Network timeouts
+- Branch not found errors
+- Clone failures
+
+**Solutions:**
+
+1. **Authentication Failures:**
+   ```bash
+   # Check if tokens are configured
+   echo $GITHUB_TOKEN
+   echo $GITLAB_TOKEN
+   
+   # Test token validity
+   curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/user
+   
+   # Use environment variable if not in .env
+   GITHUB_TOKEN=ghp_xxx npm run scan https://github.com/private/repo.git
+   ```
+
+2. **Repository URL Issues:**
+   ```bash
+   # Verify repository URL is accessible
+   curl -I https://github.com/owner/repo.git
+   
+   # Try SSH URL instead of HTTPS
+   npm run scan git@github.com:owner/repo.git
+   
+   # Ensure SSH keys are configured
+   ssh -T git@github.com
+   ```
+
+3. **Branch Not Found:**
+   ```bash
+   # List available branches
+   git ls-remote https://github.com/owner/repo.git
+   
+   # Use correct branch name
+   npm run scan https://github.com/owner/repo.git -- --branch main
+   ```
+
+4. **Network and Timeout Issues:**
+   ```bash
+   # Use shallow clone for large repositories
+   npm run scan https://github.com/large/repo.git -- --shallow-clone
+   
+   # Check network connectivity
+   ping github.com
+   ping gitlab.com
+   
+   # Clear git cache if corrupted
+   rm -rf /tmp/coderag-git-cache/*
+   ```
+
+5. **Private Repository Access:**
+   ```bash
+   # For GitHub - create token with 'repo' scope
+   # For GitLab - create token with 'read_repository' scope
+   # For Bitbucket - create app password with 'Repositories: Read'
+   
+   # Test different authentication methods
+   npm run scan https://username:token@github.com/owner/repo.git
+   ```
+
+6. **Self-Hosted Git Servers:**
+   ```bash
+   # Configure custom GitLab host
+   export GITLAB_HOST=gitlab.company.com
+   npm run scan https://gitlab.company.com/owner/repo.git
+   
+   # Use SSH for self-hosted servers
+   npm run scan git@gitlab.company.com:owner/repo.git
+   ```
+
+**Debug Remote Repository Issues:**
+```bash
+# Enable debug logging for git operations
+export LOG_LEVEL=debug
+npm run scan https://github.com/owner/repo.git
+
+# Check git cache statistics
+node build/index.js --tool git_cache_stats
+
+# Clear git cache if needed
+node build/index.js --tool clear_git_cache
+```
+
 ### 4. Performance Issues
 
 **Error:** Slow scanning or queries

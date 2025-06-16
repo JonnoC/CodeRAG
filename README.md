@@ -9,6 +9,7 @@ CodeRAG is a professional code intelligence platform that transforms complex sof
 CodeRAG creates a comprehensive graph database representation of your codebase using Neo4J, enabling sophisticated analysis and AI-powered insights:
 
 - **Automated Code Analysis** - Scans and maps classes, methods, interfaces, dependencies, and architectural relationships across multiple programming languages
+- **Remote Repository Analysis** - Directly analyze any GitHub, GitLab, or Bitbucket repository without local cloning, supporting both public and private repositories with secure authentication
 - **Intelligent Language Detection** - Automatically identifies project languages, frameworks, and build configurations from metadata and build files  
 - **Quality Assessment** - Calculates industry-standard software metrics (CK metrics, package coupling, architectural patterns) to identify technical debt and improvement opportunities
 - **Semantic Code Search** - Enables natural language queries to find code by functionality rather than syntax
@@ -71,6 +72,7 @@ Ready to enhance your development workflow with intelligent code analysis? Our c
 ### Multi-Project Management
 - **Project Isolation** - Separate analysis for different codebases with unified management
 - **Cross-Project Analysis** - Compare metrics and patterns across multiple projects
+- **Remote Repository Support** - Scan public and private repositories from GitHub, GitLab, and Bitbucket directly
 - **Bulk Operations** - Efficient scanning and analysis of multiple repositories
 
 ### Quality Metrics

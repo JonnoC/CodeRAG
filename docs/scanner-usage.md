@@ -35,6 +35,30 @@ npm run scan /path/to/your/project -- --clear-all
 npm run scan /path/to/your/project -- --exclude node_modules,dist,build
 ```
 
+### Remote Repository Scanning
+
+🌐 **New Feature**: Scan repositories directly from GitHub, GitLab, and Bitbucket without local cloning:
+
+```bash
+# Public repositories
+npm run scan https://github.com/owner/repo.git
+npm run scan https://gitlab.com/owner/repo.git
+npm run scan https://bitbucket.org/owner/repo.git
+
+# Private repositories (requires authentication - see installation guide)
+GITHUB_TOKEN=ghp_xxx npm run scan https://github.com/private/repo.git
+
+# Specific branches or tags
+npm run scan https://github.com/owner/repo.git -- --branch develop
+npm run scan https://github.com/owner/repo.git -- --branch v2.0.0
+
+# SSH URLs (requires SSH key setup)
+npm run scan git@github.com:owner/repo.git
+
+# With additional options
+npm run scan https://github.com/owner/repo.git -- --languages typescript,java --analyze
+```
+
 **Understanding Clear Options:**
 - `--clear-graph`: Clears only the current project's data (useful for re-scanning a single project in a multi-project setup)
 - `--clear-all`: Clears the entire database (all projects) - use when starting fresh or resolving data conflicts
@@ -57,6 +81,13 @@ npm run scan /path/to/django-app
 # Multi-language project
 npm run scan /path/to/fullstack-app
 # Output: ✅ Multi-language project detected: TypeScript (frontend), Java (backend)
+
+# Remote repository examples
+npm run scan https://github.com/microsoft/vscode.git
+# Output: ✅ TypeScript project detected, Build system: npm, Framework: Electron
+
+npm run scan https://github.com/spring-projects/spring-boot.git  
+# Output: ✅ Java project detected, Build system: Gradle, Framework: Spring Boot
 ```
 
 ### Via MCP Tools
@@ -74,6 +105,22 @@ Use the scan_dir tool to scan my current project at /path/to/project
 - `include_tests`: Include test files (`true`/`false`, default based on project type)
 - `clear_existing`: Clear existing graph data (`true`/`false`)
 - `max_depth`: Maximum directory depth to scan (`10`)
+
+**Remote Repository Tools:**
+
+```
+Use the scan_remote_repo tool to analyze https://github.com/owner/repo.git
+```
+
+**Parameters for scan_remote_repo:**
+- `repository_url`: Git repository URL (GitHub, GitLab, Bitbucket)
+- `branch`: Branch name to scan (default: main/master)
+- `project_id`: Custom project identifier (optional)
+- `languages`: Array of languages (auto-detected if not specified)
+- `include_tests`: Include test files (`true`/`false`)
+- `clear_existing`: Clear existing graph data (`true`/`false`)
+- `use_cache`: Use cached repository if available (`true`/`false`)
+- `shallow_clone`: Use shallow clone for faster scanning (`true`/`false`)
 
 **Auto-Detection Features:**
 - Languages are automatically detected from build files and file extensions
@@ -359,6 +406,38 @@ npm run scan /path/to/project -- --languages typescript
 - Increase Neo4J heap size
 - Clear database before large scans
 - Use `--clear-all` for fresh start
+
+### Remote Repository Issues
+
+**Authentication Failures:**
+```bash
+# Error: 401 Unauthorized
+# Solution: Check your authentication tokens in .env
+GITHUB_TOKEN=ghp_xxx npm run scan https://github.com/private/repo.git
+```
+
+**Network Issues:**
+```bash
+# Error: Failed to clone repository
+# Solutions:
+# 1. Check internet connection
+# 2. Verify repository URL
+# 3. Try SSH URL if HTTPS fails
+npm run scan git@github.com:owner/repo.git
+```
+
+**Branch Not Found:**
+```bash
+# Error: Branch 'feature-branch' not found
+# Solution: Verify branch exists
+npm run scan https://github.com/owner/repo.git -- --branch main
+```
+
+**Large Repository Timeouts:**
+```bash
+# Solution: Use shallow clone for faster processing
+npm run scan https://github.com/large/repo.git -- --shallow-clone
+```
 
 ## Advanced Usage
 

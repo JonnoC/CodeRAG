@@ -51,6 +51,9 @@ import {
   semanticSearch, updateEmbeddings, getSimilarCode, initializeSemanticSearch,
   type SemanticSearchToolParams, type UpdateEmbeddingsParams, type GetSimilarCodeParams 
 } from './tools/semantic-search.js';
+import { 
+  createRemoteScannerTools, handleRemoteScannerTool
+} from './tools/remote-scanner-tools.js';
 
 export abstract class BaseHandler {
   protected server: Server;
@@ -164,6 +167,11 @@ export abstract class BaseHandler {
             return await this.handleGetSimilarCode(request.params.arguments);
           case 'initialize_semantic_search':
             return await this.handleInitializeSemanticSearch(request.params.arguments);
+          case 'scan_remote_repo':
+          case 'validate_remote_repo':
+          case 'git_cache_stats':
+          case 'clear_git_cache':
+            return await handleRemoteScannerTool(request.params.name, request.params.arguments, this.client);
           default:
             throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
         }
@@ -928,7 +936,8 @@ export abstract class BaseHandler {
           properties: {},
           required: []
         }
-      }
+      },
+      ...createRemoteScannerTools(this.client)
     ];
   }
 

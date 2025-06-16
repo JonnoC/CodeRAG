@@ -6,6 +6,12 @@ import { Neo4jClient } from '../../src/graph/neo4j-client';
 jest.mock('neo4j-driver');
 jest.mock('fs');
 jest.mock('path');
+jest.mock('simple-git', () => ({
+  simpleGit: jest.fn(() => ({
+    clone: jest.fn(),
+    listRemote: jest.fn()
+  }))
+}));
 
 describe('Scanner Simple Tests', () => {
   let mockClient: jest.Mocked<Neo4jClient>;

@@ -46,6 +46,7 @@ CodeRAG transforms your codebase into a searchable graph database, enabling:
 - **🏗️ Architecture Insights** - Detect design patterns, architectural issues, and violations
 - **🤖 AI-Powered Exploration** - Use natural language to query your codebase structure
 - **📈 Multi-Project Management** - Analyze multiple codebases in a unified view
+- **🌐 Remote Repository Analysis** - Scan GitHub, GitLab, and Bitbucket repositories directly
 - **🎯 Smart Language Detection** - Automatically detects project languages from build files and metadata
 - **🏗️ Mono-Repository Support** - Handles complex projects with multiple languages and sub-projects
 
@@ -53,11 +54,19 @@ CodeRAG transforms your codebase into a searchable graph database, enabling:
 
 ### Analyzing a New Project
 
+**Local Project:**
 1. **Auto-scan the project (languages detected automatically):**
    ```
    Use scan_dir to scan /path/to/my/project with clear_existing=true
    ```
    *The scanner will automatically detect TypeScript, Java, Python, etc. from build files*
+
+**Remote Repository:**
+1. **Scan directly from GitHub/GitLab/Bitbucket:**
+   ```
+   Use scan_remote_repo with repository_url=https://github.com/owner/repo.git
+   ```
+   *Automatically clones, scans, and cleans up the repository*
 
 2. **Get overview with project metadata:**
    ```
@@ -136,6 +145,9 @@ npm install && npm run build
 # Auto-detect and scan project (recommended)
 npm run scan /path/to/project
 
+# Scan remote repository
+npm run scan https://github.com/owner/repo.git
+
 # Scan multiple projects (multi-project support)
 npm run scan /path/to/project1
 npm run scan /path/to/project2
@@ -151,7 +163,8 @@ npm start -- --sse --port 3000
 ```
 
 ### Key MCP Tools
-- `scan_dir` - Scan codebase
+- `scan_dir` - Scan local codebase
+- `scan_remote_repo` - Scan remote repositories
 - `semantic_search` - Natural language code search
 - `get_project_summary` - Overview
 - `find_architectural_issues` - Find problems

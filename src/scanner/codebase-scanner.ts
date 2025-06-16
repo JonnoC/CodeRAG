@@ -20,6 +20,7 @@ import {
 } from './types.js';
 import { ProjectLanguageDetector } from './detection/language-detector.js';
 import { ProjectBuildFileDetector } from './detection/build-file-detector.js';
+import { GitRepositoryManager, GitAuthConfig } from './git/index.js';
 
 export class CodebaseScanner {
   private parsers: Map<Language, LanguageParser>;
@@ -29,6 +30,7 @@ export class CodebaseScanner {
   private semanticSearchManager: SemanticSearchManager;
   private languageDetector: ProjectLanguageDetector;
   private buildFileDetector: ProjectBuildFileDetector;
+  private gitManager: GitRepositoryManager;
 
   constructor(private client: Neo4jClient) {
     this.nodeManager = new NodeManager(client);
@@ -37,6 +39,7 @@ export class CodebaseScanner {
     this.semanticSearchManager = new SemanticSearchManager(client, this.embeddingService);
     this.languageDetector = new ProjectLanguageDetector();
     this.buildFileDetector = new ProjectBuildFileDetector();
+    this.gitManager = new GitRepositoryManager();
     
     // Initialize parsers
     this.parsers = new Map();
@@ -49,10 +52,43 @@ export class CodebaseScanner {
 
   async scanProject(config: ScanConfig): Promise<ParseResult> {
     const startTime = Date.now();
-    console.log(`🔍 Starting codebase scan for project '${config.projectId}': ${config.projectPath}`);
+    
+    let actualProjectPath = config.projectPath;
+    let isTemporaryPath = false;
+
+    // Handle remote repository cloning
+    if (config.isRemote && config.gitUrl) {
+      console.log(`🔍 Starting remote codebase scan for project '${config.projectId}': ${config.gitUrl}`);
+      
+      try {
+        actualProjectPath = await this.gitManager.cloneRepository(config.gitUrl, {
+          branch: config.gitBranch,
+          depth: 1, // Shallow clone for efficiency
+          singleBranch: true,
+          tempDir: config.tempDir,
+          useCache: config.useCache,
+          cacheOptions: config.cacheOptions,
+          progressCallback: config.outputProgress ? (progress) => {
+            console.log(`📊 ${progress.message} ${progress.percentage ? `(${Math.round(progress.percentage)}%)` : ''}`);
+          } : undefined
+        });
+        isTemporaryPath = true;
+        console.log(`📥 Repository cloned to: ${actualProjectPath}`);
+      } catch (error) {
+        throw new Error(`Failed to clone remote repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    } else {
+      console.log(`🔍 Starting local codebase scan for project '${config.projectId}': ${config.projectPath}`);
+    }
+    
+    // Create updated config with actual path
+    const actualConfig: ScanConfig = {
+      ...config,
+      projectPath: actualProjectPath
+    };
     
     // Ensure project exists in database
-    await this.ensureProjectExists(config);
+    await this.ensureProjectExists(actualConfig);
     
     const allEntities: ParsedEntity[] = [];
     const allRelationships: ParsedRelationship[] = [];
@@ -61,7 +97,7 @@ export class CodebaseScanner {
 
     try {
       // Find all source files
-      const files = await this.findSourceFiles(config);
+      const files = await this.findSourceFiles(actualConfig);
       console.log(`📁 Found ${files.length} source files`);
 
       // Process files in batches
@@ -69,7 +105,7 @@ export class CodebaseScanner {
       for (let i = 0; i < files.length; i += batchSize) {
         const batch = files.slice(i, i + batchSize);
         const batchResults = await Promise.all(
-          batch.map(file => this.processFile(file, config))
+          batch.map(file => this.processFile(file, actualConfig))
         );
 
         for (const result of batchResults) {
@@ -81,7 +117,7 @@ export class CodebaseScanner {
           }
         }
 
-        if (config.outputProgress) {
+        if (actualConfig.outputProgress) {
           console.log(`📊 Processed ${Math.min(i + batchSize, files.length)}/${files.length} files`);
         }
       }
@@ -120,6 +156,15 @@ export class CodebaseScanner {
     } catch (error) {
       console.error(`❌ Scan failed: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
+    } finally {
+      // Cleanup temporary directory for remote repositories
+      if (isTemporaryPath && (config.cleanupTemp !== false)) {
+        try {
+          await this.gitManager.cleanup(actualProjectPath);
+        } catch (cleanupError) {
+          console.warn(`⚠️  Failed to cleanup temporary directory: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown error'}`);
+        }
+      }
     }
   }
 
@@ -605,5 +650,49 @@ ${errors.length > 10 ? `  ... and ${errors.length - 10} more` : ''}
     }
 
     return { successful, failed };
+  }
+
+  async scanRemoteRepository(
+    gitUrl: string, 
+    config: Omit<ScanConfig, 'projectPath' | 'isRemote' | 'gitUrl'>
+  ): Promise<ParseResult> {
+    const remoteConfig: ScanConfig = {
+      ...config,
+      projectPath: '', // Will be set by cloning
+      isRemote: true,
+      gitUrl,
+      cleanupTemp: true
+    };
+    
+    return this.scanProject(remoteConfig);
+  }
+
+  async validateRemoteRepository(gitUrl: string): Promise<boolean> {
+    try {
+      await this.gitManager.validateRepository(gitUrl);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  isGitUrl(url: string): boolean {
+    return this.gitManager.isGitUrl(url);
+  }
+
+  parseGitUrl(url: string) {
+    return this.gitManager.parseGitUrl(url);
+  }
+
+  updateGitAuthConfig(authConfig: GitAuthConfig): void {
+    this.gitManager.updateAuthConfig(authConfig);
+  }
+
+  async clearCache(): Promise<void> {
+    await this.gitManager.clearCache();
+  }
+
+  async getCacheStats() {
+    return this.gitManager.getCacheStats();
   }
 }
